@@ -1,0 +1,36 @@
+id: aureline-checker
+language: rust
+
+tags:
+  - rust
+  - lang
+  - checker
+
+dependsOn:
+  - aureline-ast
+
+tasks:
+  build:
+    command: "cargo build -p aureline-checker"
+    deps:
+      - "aureline-ast:build"
+    inputs: &rust_inputs
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+  check:
+    command: "cargo check -p aureline-checker"
+    deps:
+      - "aureline-ast:check"
+    inputs: *rust_inputs
+  test:
+    command: "cargo test -p aureline-checker"
+    deps:
+      - "aureline-ast:test"
+    inputs: *rust_inputs
+  format:
+    command: "cargo fmt --package aureline-checker --check"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"

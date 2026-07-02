@@ -1,0 +1,13 @@
+[package]
+name = "aureline-ast"
+description = "Aureline syntax tree and shared language data structures."
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true

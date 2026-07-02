@@ -1,0 +1,39 @@
+id: aureline-js
+language: typescript
+
+tags:
+  - node
+  - sdk
+
+tasks:
+  build:
+    command: "pnpm --filter @aureline/js build"
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "/pnpm-lock.yaml"
+    outputs:
+      - "dist"
+  check:
+    command: "pnpm --filter @aureline/js check"
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "/pnpm-lock.yaml"
+  test:
+    command: "pnpm --filter @aureline/js test"
+    deps:
+      - "build"
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "/pnpm-lock.yaml"
+  format:
+    command: "pnpm --filter @aureline/js format"
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"

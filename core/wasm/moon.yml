@@ -1,0 +1,55 @@
+id: aureline-wasm
+language: rust
+
+tags:
+  - rust
+  - wasm
+  - lang
+
+dependsOn:
+  - aureline-lang
+
+tasks:
+  build:
+    command: "cargo build -p aureline-wasm"
+    deps:
+      - "aureline-lang:build"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+  check:
+    command: "cargo check -p aureline-wasm"
+    deps:
+      - "aureline-lang:check"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+  test:
+    command: "cargo test -p aureline-wasm"
+    deps:
+      - "aureline-lang:test"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+  build-wasm:
+    command: "cargo build -p aureline-wasm --target wasm32-unknown-unknown"
+    deps:
+      - "aureline-lang:build"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+    outputs:
+      - "/target/wasm32-unknown-unknown/debug/aureline_wasm.wasm"
+  format:
+    command: "cargo fmt --package aureline-wasm --check"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"

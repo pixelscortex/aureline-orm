@@ -1,0 +1,36 @@
+id: aureline-migration
+language: rust
+
+tags:
+  - rust
+  - lang
+  - migration
+
+dependsOn:
+  - aureline-ast
+
+tasks:
+  build:
+    command: "cargo build -p aureline-migration"
+    deps:
+      - "aureline-ast:build"
+    inputs: &rust_inputs
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+  check:
+    command: "cargo check -p aureline-migration"
+    deps:
+      - "aureline-ast:check"
+    inputs: *rust_inputs
+  test:
+    command: "cargo test -p aureline-migration"
+    deps:
+      - "aureline-ast:test"
+    inputs: *rust_inputs
+  format:
+    command: "cargo fmt --package aureline-migration --check"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"

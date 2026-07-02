@@ -1,0 +1,27 @@
+id: aureline-ast
+language: rust
+
+tags:
+  - rust
+  - lang
+  - ast
+
+tasks:
+  build:
+    command: "cargo build -p aureline-ast"
+    inputs: &rust_inputs
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+  check:
+    command: "cargo check -p aureline-ast"
+    inputs: *rust_inputs
+  test:
+    command: "cargo test -p aureline-ast"
+    inputs: *rust_inputs
+  format:
+    command: "cargo fmt --package aureline-ast --check"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"

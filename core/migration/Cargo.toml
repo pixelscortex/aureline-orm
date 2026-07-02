@@ -1,0 +1,16 @@
+[package]
+name = "aureline-migration"
+description = "Aureline migration preview primitives."
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aureline-ast = { path = "../ast" }
+
+[lints]
+workspace = true

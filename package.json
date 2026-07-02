@@ -1,0 +1,16 @@
+{
+  "name": "aureline",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.3",
+  "scripts": {
+    "build": "moon run :build",
+    "check": "moon run :check",
+    "test": "moon run :test",
+    "format": "moon run :format"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "typescript": "^5.5.4"
+  }
+}

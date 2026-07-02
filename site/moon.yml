@@ -1,0 +1,45 @@
+id: aureline-site
+language: typescript
+
+tags:
+  - node
+  - site
+  - sveltekit
+
+tasks:
+  dev:
+    command: "pnpm --filter @aureline/site dev"
+    inputs:
+      - "src/**/*"
+      - "static/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+  build:
+    command: "pnpm --filter @aureline/site build"
+    inputs:
+      - "src/**/*"
+      - "static/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+      - "/pnpm-lock.yaml"
+    outputs:
+      - ".svelte-kit/output"
+      - "build"
+  check:
+    command: "pnpm --filter @aureline/site check"
+    inputs:
+      - "src/**/*"
+      - "static/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+      - "/pnpm-lock.yaml"
+  format:
+    command: "pnpm --filter @aureline/site check"
+    inputs:
+      - "src/**/*"
+      - "package.json"
+      - "tsconfig.json"
+      - "vite.config.ts"

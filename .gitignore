@@ -1,0 +1,11 @@
+/target/
+**/target/
+/node_modules/
+**/node_modules/
+**/dist/
+.moon/cache/
+**/.svelte-kit/
+site/build/
+.DS_Store
+.env
+.env.*

@@ -1,0 +1,9 @@
+projects:
+  - "core/*"
+  - "sdks/*"
+  - "site"
+  - "examples/*"
+
+vcs:
+  client: git
+  defaultBranch: main
