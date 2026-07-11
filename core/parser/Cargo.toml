@@ -1,16 +1,17 @@
 [package]
 name = "aureline-parser"
-description = "Aureline parser entrypoints."
-edition.workspace = true
-license.workspace = true
-rust-version.workspace = true
 version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Aureline parser entrypoints."
+license.workspace = true
 
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
 aureline-ast = { path = "../ast" }
+chumsky = "0.13.0"
 
 [lints]
 workspace = true

@@ -1,17 +1,14 @@
 [package]
 name = "aureline-cli"
-description = "Aureline command-line interface."
-edition.workspace = true
-license.workspace = true
-rust-version.workspace = true
 version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Aureline command-line interface."
+license.workspace = true
 
 [[bin]]
 name = "aureline"
 path = "src/main.rs"
-
-[dependencies]
-aureline-lang = { path = "../lang" }
 
 [lints]
 workspace = true

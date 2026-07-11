@@ -5,14 +5,9 @@ tags:
   - rust
   - cli
 
-dependsOn:
-  - aureline-lang
-
 tasks:
   build:
     command: "cargo build -p aureline-cli"
-    deps:
-      - "aureline-lang:build"
     inputs:
       - "src/**/*.rs"
       - "Cargo.toml"
@@ -20,8 +15,6 @@ tasks:
       - "/Cargo.lock"
   check:
     command: "cargo check -p aureline-cli"
-    deps:
-      - "aureline-lang:check"
     inputs:
       - "src/**/*.rs"
       - "Cargo.toml"
@@ -29,8 +22,6 @@ tasks:
       - "/Cargo.lock"
   test:
     command: "cargo test -p aureline-cli"
-    deps:
-      - "aureline-lang:test"
     inputs:
       - "src/**/*.rs"
       - "Cargo.toml"

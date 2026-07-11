@@ -14,9 +14,8 @@ Aureline is a greenfield ORM/tooling workspace for a write-once, connect-everywh
 │   ├── parser/            # .aurl parser entrypoints
 │   ├── checker/           # semantic checker and diagnostics
 │   ├── migration/         # migration preview primitives
-│   ├── lang/              # public facade over ast/parser/checker/migration
-│   ├── wasm/              # browser WASM wrapper over aureline-lang
-│   └── cli/               # Rust CLI entrypoint; depends only on aureline-lang
+│   ├── wasm/              # browser WASM wrapper over parser/checker APIs as needed
+│   └── cli/               # Rust CLI entrypoint
 ├── sdks/
 │   └── js/                # TypeScript SDK package; package: @aureline/js
 ├── site/                  # SvelteKit site for docs + playground, initialized with shadcn-svelte preset
@@ -38,7 +37,6 @@ Naming rule: package/crate/project IDs use the `aureline-` prefix (or npm scope 
 
 ## Current project names
 
-- Rust language facade package: `aureline-lang`
 - Rust AST package: `aureline-ast`
 - Rust parser package: `aureline-parser`
 - Rust checker package: `aureline-checker`
@@ -48,7 +46,7 @@ Naming rule: package/crate/project IDs use the `aureline-` prefix (or npm scope 
 - JS SDK package: `@aureline/js`
 - SvelteKit site package: `@aureline/site`
 
-`aureline-core` was intentionally removed. The name was too vague. `core/lang` is the facade crate that hides the internal language crates from the CLI and WASM wrapper.
+`aureline-core` was intentionally removed. The name was too vague; crates now depend directly on the compiler packages they actually use.
 
 ## Core language split
 
@@ -60,19 +58,18 @@ core/
 ├── parser/      # parses source into ast/data structures
 ├── checker/     # semantic diagnostics over parsed structures
 ├── migration/   # migration preview/planning primitives
-├── lang/        # facade crate; re-exports stable language API
-├── wasm/        # browser wrapper; depends only on aureline-lang
-└── cli/         # command-line UX; depends only on aureline-lang
+├── wasm/        # browser wrapper; depends directly on compiler crates it exposes
+└── cli/         # command-line UX; depends directly on compiler crates it uses
 ```
 
 Dependency rule:
 
 ```text
-cli  -> lang -> ast/parser/checker/migration
-wasm -> lang -> ast/parser/checker/migration
+wasm -> parser
+cli  -> ast/parser/checker/migration as needed
 ```
 
-The CLI and WASM wrapper should not depend directly on `ast`, `parser`, `checker`, or `migration`. Keeping `aureline-lang` as the facade lets internals move without forcing every consumer to update.
+The CLI and WASM wrapper may depend directly on `ast`, `parser`, `checker`, or `migration`; each package should expose only the compiler stages it actually needs.
 
 Future compiler-side crates should fit this same rule:
 
@@ -82,7 +79,7 @@ core/
 └── formatter/    # future .aurl formatter
 ```
 
-Only split further when a real boundary appears. Empty crates are noise; facade plus small internal crates is the balance.
+Only split further when a real boundary appears. Empty facades are noise; small direct crates keep dependencies obvious.
 
 ## Future SDK split
 

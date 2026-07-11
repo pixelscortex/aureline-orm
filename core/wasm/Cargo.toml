@@ -1,17 +1,18 @@
 [package]
 name = "aureline-wasm"
-description = "Browser WebAssembly wrapper for the Aureline language facade."
-edition.workspace = true
-license.workspace = true
-rust-version.workspace = true
 version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Browser WebAssembly wrapper for Aureline lexer details."
+license.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [dependencies]
-aureline-lang = { path = "../lang" }
+aureline-parser = { path = "../parser" }
+chumsky = "0.13.0"
 console_error_panic_hook = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"

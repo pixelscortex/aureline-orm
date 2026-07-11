@@ -7,13 +7,13 @@ tags:
   - lang
 
 dependsOn:
-  - aureline-lang
+  - aureline-parser
 
 tasks:
   build:
     command: "cargo build -p aureline-wasm"
     deps:
-      - "aureline-lang:build"
+      - "aureline-parser:build"
     inputs:
       - "src/**/*.rs"
       - "Cargo.toml"
@@ -22,7 +22,7 @@ tasks:
   check:
     command: "cargo check -p aureline-wasm"
     deps:
-      - "aureline-lang:check"
+      - "aureline-parser:check"
     inputs:
       - "src/**/*.rs"
       - "Cargo.toml"
@@ -31,7 +31,7 @@ tasks:
   test:
     command: "cargo test -p aureline-wasm"
     deps:
-      - "aureline-lang:test"
+      - "aureline-parser:test"
     inputs:
       - "src/**/*.rs"
       - "Cargo.toml"
@@ -40,7 +40,7 @@ tasks:
   build-wasm:
     command: "cargo build -p aureline-wasm --target wasm32-unknown-unknown"
     deps:
-      - "aureline-lang:build"
+      - "aureline-parser:build"
     inputs:
       - "src/**/*.rs"
       - "Cargo.toml"
@@ -48,6 +48,17 @@ tasks:
       - "/Cargo.lock"
     outputs:
       - "/target/wasm32-unknown-unknown/debug/aureline_wasm.wasm"
+  pack-web:
+    command: "wasm-pack build . --target web --out-dir dist --no-pack"
+    deps:
+      - "aureline-wasm:build-wasm"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+    outputs:
+      - "dist"
   format:
     command: "cargo fmt --package aureline-wasm --check"
     inputs:

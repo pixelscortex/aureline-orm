@@ -1,4 +1,5 @@
 packages:
+  - "core/wasm"
   - "sdks/*"
   - "site"
   - "examples/*"

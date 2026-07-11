@@ -9,6 +9,8 @@ tags:
 tasks:
   dev:
     command: "pnpm --filter @aureline/site dev"
+    deps:
+      - "aureline-wasm:pack-web"
     inputs:
       - "src/**/*"
       - "static/**/*"
@@ -17,6 +19,8 @@ tasks:
       - "vite.config.ts"
   build:
     command: "pnpm --filter @aureline/site build"
+    deps:
+      - "aureline-wasm:pack-web"
     inputs:
       - "src/**/*"
       - "static/**/*"

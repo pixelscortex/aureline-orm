@@ -1,0 +1,10 @@
+javascript:
+  packageManager: pnpm
+node: {}
+pnpm: {}
+rust:
+  syncToolchainConfig: true
+  targets:
+    - "wasm32-unknown-unknown"
+  bins:
+    - "wasm-pack"

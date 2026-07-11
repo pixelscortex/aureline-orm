@@ -1,0 +1,25 @@
+{
+  "name": "@aureline/wasm",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Browser WebAssembly wrapper for Aureline lexer details.",
+  "license": "MIT OR Apache-2.0",
+  "main": "./dist/aureline_wasm.js",
+  "types": "./dist/aureline_wasm.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/aureline_wasm.d.ts",
+      "default": "./dist/aureline_wasm.js"
+    },
+    "./aureline_wasm_bg.wasm": "./dist/aureline_wasm_bg.wasm"
+  },
+  "files": [
+    "dist/aureline_wasm.js",
+    "dist/aureline_wasm.d.ts",
+    "dist/aureline_wasm_bg.wasm",
+    "dist/snippets"
+  ],
+  "sideEffects": [
+    "./dist/snippets/*"
+  ]
+}

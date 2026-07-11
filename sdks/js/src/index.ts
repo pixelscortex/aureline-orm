@@ -16,6 +16,9 @@ export interface Schema {
   readonly models: readonly Model[];
 }
 
-export function createSchema(name: string, models: readonly Model[] = []): Schema {
+export function createSchema(
+  name: string,
+  models: readonly Model[] = [],
+): Schema {
   return { name, models };
 }

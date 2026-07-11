@@ -1,0 +1,28 @@
+{
+  "inlay_hints": {
+    "enabled": false,
+  },
+  "colorize_brackets": true,
+  "languages": {
+    "Svelte": {
+      "format_on_save": "on",
+      "formatter": "auto",
+    },
+    "JavaScript": {
+      "format_on_save": "on",
+      "formatter": "auto",
+    },
+    "TypeScript": {
+      "format_on_save": "on",
+      "formatter": "auto",
+    },
+    "TSX": {
+      "format_on_save": "on",
+      "formatter": "auto",
+    },
+    "Rust": {
+      "format_on_save": "on",
+      "formatter": "language_server",
+    },
+  },
+}
