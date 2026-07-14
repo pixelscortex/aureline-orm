@@ -1,21 +1,18 @@
 use aureline_ast::tokens::Token;
 use chumsky::prelude::*;
 
-pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<aureline_ast::tokens::Token>> {
-    let table = just("table").map(|_| Token::Table);
-    let schemafull = just("schemafull").map(|_| Token::Schemafull);
-    let schemaless = just("schemaless").map(|_| Token::Schemaless);
-    let l_brace = just("{").map(|_| Token::LBrace);
-    let r_brace = just("}").map(|_| Token::RBrance);
+#[must_use]
+pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<aureline_ast::tokens::Token<'src>>> {
+    let word = text::ident().map(|word: &'src str| match word {
+        "table" => Token::Table,
+        "schemafull" => Token::Schemafull,
+        "schemaless" => Token::Schemaless,
+        identifier => Token::Ident(identifier),
+    });
 
-    let token = choice((
-        text::newline().to(Token::Newline),
-        table,
-        schemafull,
-        schemaless,
-        l_brace,
-        r_brace,
-    ));
+    let punctuation = choice((just('{').to(Token::LBrace), just('}').to(Token::RBrace)));
+
+    let token = choice((text::newline().to(Token::Newline), word, punctuation));
 
     token
         // Ignore spaces and tabs around Token, but preserve newlines as real

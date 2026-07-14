@@ -1,13 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Token {
+pub enum Token<'src> {
     Newline,
-
     Table,
-    Ident,
+    Ident(&'src str),
     Schemafull,
     Schemaless,
     LBrace,
-    RBrance,
+    RBrace,
 }
