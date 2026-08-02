@@ -1,0 +1,27 @@
+docs/agents/domain.md
+  s_006284b8e72c28::t_ba05dc2740f0df 1-42
+docs/agents/triage-labels.md
+  s_006284b8e72c28::t_80e1bb21efa709 1-15
+docs/agents/issue-tracker.md
+  s_006284b8e72c28::t_ba05dc2740f0df 1-6,12-13,15-17,19,21,25
+  s_006284b8e72c28::t_097c74705e2854 7-11,14,18,20,22-24,26-45
+AGENTS.md
+  s_006284b8e72c28::t_ba05dc2740f0df 1-6,11-13
+  s_006284b8e72c28::t_80e1bb21efa709 7-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b4d46dca68c7ad419ab35ef3462964b0dab3b08d",
+  "prompts": {},
+  "sessions": {
+    "s_006284b8e72c28": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc2e8-3fb5-7363-911a-43451ab0f01b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
