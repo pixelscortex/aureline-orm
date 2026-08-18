@@ -1,0 +1,40 @@
+.agents/skills/comments-guidelines/references/maintenance-and-generation.md
+  s_5a713a16ef2507::t_a8487b399f6b5b 1-31,33-37,40-44,49-54,57-61
+  s_5a713a16ef2507::t_8002c025b5219d 32,38-39,45-48,55-56
+.agents/skills/comments-guidelines/references/decisions-and-risks.md
+  s_5a713a16ef2507::t_a8487b399f6b5b 1-77,79-83,85-89,93-100,102-105,107-111,114-121,123-129,131-132,136-140
+  s_5a713a16ef2507::t_789d834d706198 130
+  s_5a713a16ef2507::t_9da92a2cf28db0 122,133-135
+  s_5a713a16ef2507::t_8002c025b5219d 78,84,90-92,101,106,112-113
+.agents/skills/comments-guidelines/SKILL.md
+  s_5a713a16ef2507::t_869a5a8189e723 39
+  s_5a713a16ef2507::t_65ab7c5f96338a 1-2,4-7,9,11,13,15,17,19,28,50
+  s_5a713a16ef2507::t_0527d6219d88c5 29-38,40-48,51
+  s_5a713a16ef2507::t_1083b6dffa1cb5 8,10,12,49
+  s_5a713a16ef2507::t_89950890b3ddaa 20-27
+  s_5a713a16ef2507::t_fd0ab719691874 3,14,16,18
+.agents/skills/comments-guidelines/references/context-and-placement.md
+  s_5a713a16ef2507::t_a8487b399f6b5b 1-190
+.agents/skills/comments-guidelines/references/interfaces-and-mechanisms.md
+  s_5a713a16ef2507::t_01add3cf999475 13
+  s_5a713a16ef2507::t_8002c025b5219d 11,16-20,27,30-32,34,36-39,42-45
+  s_5a713a16ef2507::t_a8487b399f6b5b 1-10,12,14-15,21-26,28-29,33,35,40-41,46-115
+.agents/skills/comments-guidelines/agents/openai.yaml
+  s_5a713a16ef2507::t_65ab7c5f96338a 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9d40caa12e0e18639670f1f4beefb8afc7b01851",
+  "prompts": {},
+  "sessions": {
+    "s_5a713a16ef2507": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01651-c8fc-7ed0-87a3-a9c2724b0eed",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
