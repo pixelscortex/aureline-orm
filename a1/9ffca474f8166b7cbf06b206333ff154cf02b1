@@ -1,0 +1,33 @@
+.agents/skills/comments-guidelines/SKILL.md
+  s_5a713a16ef2507::t_1083b6dffa1cb5 3,8,10,12,14,16,20,42
+  s_5a713a16ef2507::t_0527d6219d88c5 22-31,33-41,44
+  s_5a713a16ef2507::t_65ab7c5f96338a 1-2,4-7,9,11,13,15,17,19,21,43
+  s_5a713a16ef2507::t_869a5a8189e723 18,32
+.agents/skills/comments-guidelines/references/contextual-contrasts.md
+  s_5a713a16ef2507::t_854db2ceba2de3 247-248,341-342,361-362
+  s_5a713a16ef2507::t_0527d6219d88c5 7-11,13-18,98-129,131-136,139-146,148-169,171-185,189-191,194-246,249-271,298-340,343-360,363-365,367-370,373-377,381-388,390-399,403-432,434-449,452-463,465-469,472-476,478-483,486,488-492
+  s_5a713a16ef2507::t_1083b6dffa1cb5 1-6,19-97
+  s_5a713a16ef2507::t_6642bb5b8b16d6 12,272-297,464,470-471,477,484-485,487
+  s_5a713a16ef2507::t_99aaf88f2605ac 188,371-372
+  s_5a713a16ef2507::t_ad17a8e7de1d95 450-451
+  s_5a713a16ef2507::t_869a5a8189e723 130,147,170,186-187,366,378-380,389,400-402,433
+  s_5a713a16ef2507::t_13017631aba74b 137-138,192-193
+.agents/skills/comments-guidelines/agents/openai.yaml
+  s_5a713a16ef2507::t_65ab7c5f96338a 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a19ffca474f8166b7cbf06b206333ff154cf02b1",
+  "prompts": {},
+  "sessions": {
+    "s_5a713a16ef2507": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01651-c8fc-7ed0-87a3-a9c2724b0eed",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
