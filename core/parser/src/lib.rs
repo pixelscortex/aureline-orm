@@ -1,10 +1,14 @@
 mod grammar;
 mod lexer;
 
-use aureline_ast::ast::Ast;
+use aureline_ast::ast::{Ast, Comment};
 use aureline_ast::source::{SourceId, SourceSpan, TextRange, TextSize};
 pub use aureline_ast::tokens::Token;
-use chumsky::{Parser, prelude::SimpleSpan};
+use chumsky::{
+    Parser,
+    prelude::{SimpleSpan, Spanned},
+};
+use lexer::Lexeme;
 
 /// A typed problem produced before the parser can construct a complete syntax tree.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -13,6 +17,8 @@ pub enum SyntaxProblem {
     SourceTooLarge { byte_len: usize },
     /// The lexer could not form a token; `span` covers the offending source bytes.
     InvalidToken { span: SourceSpan },
+    /// A block comment reached the end of input; `span` points at its opening delimiter.
+    UnterminatedBlockComment { span: SourceSpan },
     /// The token stream did not match the grammar; `span` covers the unexpected
     /// token or is empty at the unexpected end of input.
     UnexpectedToken { span: SourceSpan },
@@ -39,7 +45,7 @@ pub fn parse_with_source(source_id: SourceId, source: &str) -> Result<Ast, Vec<S
         }]);
     }
 
-    let tokens = lexer::lexer()
+    let occurrences = lexer::lexer()
         .parse(source)
         .into_result()
         .map_err(|errors| {
@@ -51,7 +57,24 @@ pub fn parse_with_source(source_id: SourceId, source: &str) -> Result<Ast, Vec<S
                 .collect::<Vec<_>>()
         })?;
 
-    grammar::parse_tokens(&tokens, source_id, source.len()).map_err(|errors| {
+    let mut tokens = Vec::new();
+    let mut comments = Vec::new();
+    for Spanned { inner, span } in occurrences {
+        match inner {
+            Lexeme::Comment(kind) => {
+                comments.push(Comment::new(kind, source_span(source_id, span)));
+            }
+            Lexeme::UnterminatedBlockComment => {
+                let opening = SimpleSpan::from(span.start..span.start + 2);
+                return Err(vec![SyntaxProblem::UnterminatedBlockComment {
+                    span: source_span(source_id, opening),
+                }]);
+            }
+            Lexeme::Token(token) => tokens.push(Spanned { inner: token, span }),
+        }
+    }
+
+    grammar::parse_tokens(&tokens, comments, source_id, source.len()).map_err(|errors| {
         errors
             .into_iter()
             .map(|error| SyntaxProblem::UnexpectedToken {

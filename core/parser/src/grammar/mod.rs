@@ -2,7 +2,7 @@ mod table;
 
 use aureline_ast::{
     AstBuilder,
-    ast::{Ast, SchemaType, SourceType},
+    ast::{Ast, Comment, SchemaType, SourceType},
     source::{SourceId, SourceSpan},
     tokens::Token,
 };
@@ -25,9 +25,9 @@ pub(crate) struct ParserState {
 }
 
 impl ParserState {
-    fn new(source: SourceId) -> Self {
+    fn new(source: SourceId, comments: Vec<Comment>) -> Self {
         Self {
-            ast: AstBuilder::new(),
+            ast: AstBuilder::new(comments),
             source,
         }
     }
@@ -61,10 +61,11 @@ pub(crate) fn source_file_parser<'tokens, 'src: 'tokens>()
 /// Returns parser errors when the token stream does not match the grammar.
 pub(crate) fn parse_tokens<'tokens, 'src: 'tokens>(
     tokens: &'tokens [TokenOccurrence<'src>],
+    comments: Vec<Comment>,
     source: SourceId,
     source_len: usize,
 ) -> Result<Ast, Vec<Cheap<SimpleSpan>>> {
-    let mut state = extra::SimpleState(ParserState::new(source));
+    let mut state = extra::SimpleState(ParserState::new(source, comments));
     let input = tokens.split_spanned(SimpleSpan::from(source_len..source_len));
 
     source_file_parser()

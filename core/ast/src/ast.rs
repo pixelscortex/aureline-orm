@@ -12,6 +12,10 @@ pub struct Ast {
     root: SourceFile,
     tables: Arena<TableId, TableDecl>,
     fields: Arena<FieldId, FieldDecl>,
+    // Comments remain available through `Ast::comments` but are excluded from
+    // the logical contract because they never change program meaning.
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    comments: Vec<Comment>,
 }
 
 impl Ast {
@@ -19,11 +23,13 @@ impl Ast {
         root: SourceFile,
         tables: Arena<TableId, TableDecl>,
         fields: Arena<FieldId, FieldDecl>,
+        comments: Vec<Comment>,
     ) -> Self {
         Self {
             root,
             tables,
             fields,
+            comments,
         }
     }
 
@@ -41,6 +47,49 @@ impl Ast {
     pub fn field(&self, id: FieldId) -> Option<&FieldDecl> {
         self.fields.get(id)
     }
+
+    /// Returns comments in source order.
+    #[must_use]
+    pub fn comments(&self) -> &[Comment] {
+        &self.comments
+    }
+}
+
+/// Semantically inert comment syntax retained for source-aware tooling.
+///
+/// Its span covers the complete comment lexeme, including delimiters. A line
+/// comment's span stops before the physical newline that terminates it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Comment {
+    kind: CommentKind,
+    span: SourceSpan,
+}
+
+impl Comment {
+    /// Creates a comment whose span follows the complete-lexeme contract.
+    #[must_use]
+    pub const fn new(kind: CommentKind, span: SourceSpan) -> Self {
+        Self { kind, span }
+    }
+
+    #[must_use]
+    pub const fn kind(self) -> CommentKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub const fn span(self) -> SourceSpan {
+        self.span
+    }
+}
+
+/// The delimiter form of a comment.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommentKind {
+    /// A `//` comment ending before the physical newline.
+    Line,
+    /// A non-nesting `/* ... */` comment.
+    Block,
 }
 
 #[derive(Debug)]

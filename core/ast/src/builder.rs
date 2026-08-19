@@ -1,6 +1,6 @@
 use crate::{
     arena::Arena,
-    ast::{Ast, FieldDecl, SchemaType, SourceFile, SourceType, TableDecl},
+    ast::{Ast, Comment, FieldDecl, SchemaType, SourceFile, SourceType, TableDecl},
     ids::{FieldId, TableId},
     source::SourceSpan,
 };
@@ -9,15 +9,21 @@ pub struct AstBuilder {
     tables: Arena<TableId, TableDecl>,
     fields: Arena<FieldId, FieldDecl>,
     table_order: Vec<TableId>,
+    comments: Vec<Comment>,
 }
 
 impl AstBuilder {
+    /// Starts an AST build with comments already collected in source order.
+    ///
+    /// Every supplied comment must belong to the source represented by this AST;
+    /// the builder preserves but does not validate that provenance or ordering.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(comments: Vec<Comment>) -> Self {
         Self {
             tables: Arena::new(),
             fields: Arena::new(),
             table_order: Vec::new(),
+            comments,
         }
     }
 
@@ -64,7 +70,7 @@ impl AstBuilder {
     #[must_use]
     pub fn finish(self) -> Ast {
         let root = SourceFile::new(self.table_order);
-        Ast::new(root, self.tables, self.fields)
+        Ast::new(root, self.tables, self.fields, self.comments)
     }
 }
 
@@ -104,6 +110,6 @@ impl TableFieldBuilder<'_> {
 
 impl Default for AstBuilder {
     fn default() -> Self {
-        Self::new()
+        Self::new(Vec::new())
     }
 }
