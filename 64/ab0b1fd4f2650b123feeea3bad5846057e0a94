@@ -1,0 +1,43 @@
+core/ast/src/ast.rs
+  s_901a931cc21033::t_9a87bb8a6d2395 1,58-59,61-62,64-65,75-81,83,85,87,91-95,101-105,110-114
+  s_901a931cc21033::t_6ca35a6f948c04 69-71
+  s_901a931cc21033::t_9d3ed01bb69f8d 72-74
+core/parser/src/grammar/mod.rs
+  s_901a931cc21033::t_05fdea5dc9ffd1 6
+  s_901a931cc21033::t_b6b1422360b976 19-20,40
+  s_901a931cc21033::t_6ca35a6f948c04 42,62
+  s_901a931cc21033::t_56111679d97373 9-14,17-18,21-38,43,63-68,71,74,78,83,87,92
+core/parser/src/lib.rs
+  s_901a931cc21033::t_9d3ed01bb69f8d 9,12,14,16-17,21,25,34
+  s_901a931cc21033::t_c0a0707c4f8dfb 51
+  s_901a931cc21033::t_56111679d97373 1-2,5,7,10-11,13,15,18-20,22-24,26-33,35-50,52-64,67-68,72
+  s_901a931cc21033::t_b6b1422360b976 69-70
+  s_901a931cc21033::t_6ca35a6f948c04 65-66,71
+  s_901a931cc21033::t_61fe04a3f82309 8
+testing/contract/tests/parser.rs
+  s_901a931cc21033::t_b79693fd910b0d 1-5,12-46
+core/parser/src/grammar/table.rs
+  s_901a931cc21033::t_56111679d97373 4,7,19-28
+core/parser/src/lexer.rs
+  s_901a931cc21033::t_56111679d97373 2-4,7-8,18
+testing/contract/Cargo.toml
+  s_901a931cc21033::t_b79693fd910b0d 18-20
+Cargo.lock
+  s_901a931cc21033::t_53223559edee54 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "64ab0b1fd4f2650b123feeea3bad5846057e0a94",
+  "prompts": {},
+  "sessions": {
+    "s_901a931cc21033": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01a97-9d85-70b1-9394-c58091ae80ca",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
