@@ -1,0 +1,101 @@
+core/migration/CONTEXT.md
+  s_74c3596b0a7744::t_c1e37740a68306 1-31
+core/checker/CONTEXT.md
+  s_df764d0349861f::t_5ace990fcd27be 32
+  s_0ae620089182fa::t_4de3a68d8a1226 37-40
+  s_0ae620089182fa::t_79844fd4dc5ea8 53-56,58-59
+  s_7983d1df596502::t_ef55a60229cbe5 68
+  s_0ae620089182fa::t_afcb167921e291 15-26
+  s_7983d1df596502::t_68e81a054b7256 72
+sdks/CONTEXT.md
+  s_00b2b59d36ef75::t_503f840472693a 26,28,30-31,33
+  s_df764d0349861f::t_5ace990fcd27be 20
+  s_00b2b59d36ef75::t_2fe945547e4311 34-41
+  s_00b2b59d36ef75::t_8ade455d13a54d 3,27,29,32
+core/ast/CONTEXT.md
+  s_46474af4c1dcf6::t_cabf666e905161 12,20
+docs/research/migration-ddl-generation-prior-art.md
+  s_74c3596b0a7744::t_9fa91ac4e20c18 1-173
+docs/research/semantic-checked-program-prior-art.md
+  s_a5fd1d7126fb37::t_22240b5f802895 1-226
+docs/research/drizzle-v1-migration-workflow.md
+  s_74c3596b0a7744::t_edb5b3104a445f 1-498
+docs/research/table-id-enforcement-surrealdb-sqlite.md
+  s_0e2cbfe26125f0::t_072fcbf1907af3 1-23,28-67,70-96,98-103,108-168,170-176,179,201-220,225-226,228-229,231-232,234-235,237,241,254-444,447
+  s_0e2cbfe26125f0::t_81163b1c9dfa5f 24-27,177-178,180,182-200,221-224,227,230,233,236,238-240,242-253,445-446
+  s_0e2cbfe26125f0::t_8473dd87304d4c 68-69,97,104-107,169,181
+CONTEXT-MAP.md
+  s_74c3596b0a7744::t_c1e37740a68306 7,13,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cc3ad964c764d865b60cebcd878eee471059c2d6",
+  "prompts": {},
+  "sessions": {
+    "s_00b2b59d36ef75": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01500-6899-7ef1-bf3a-4e8dc4b12327",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_0ae620089182fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01091-a74e-7833-8dc8-d3279e3293c0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_0e2cbfe26125f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0159e-4277-7341-ab19-42d0dd5fcd6a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_46474af4c1dcf6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0070d-1444-7c03-9b81-5f6ff68ed4ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_74c3596b0a7744": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a014fb-27c1-7d41-b078-54584f5e1e77",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_7983d1df596502": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0070d-3f31-78c2-ad9e-46960a19b213",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_a5fd1d7126fb37": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01091-c38a-7533-baf7-52742fe9c862",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_df764d0349861f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0170c-43ef-7e13-bcc8-bd6a176212a3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
