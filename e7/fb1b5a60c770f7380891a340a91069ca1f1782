@@ -1,0 +1,35 @@
+testing/contract/tests/parser.rs
+  s_4aec094845d63e::t_c4d36ad5fda92e 4
+testing/contract/src/sexpr.rs
+  s_4aec094845d63e::t_c4d36ad5fda92e 1-2,24,46,51-53,69-70,76-105,114,119-172
+testing/contract/src/normalizer.rs
+  s_4aec094845d63e::t_c4d36ad5fda92e 172-174
+testing/contract/src/matcher.rs
+  s_4aec094845d63e::t_c4d36ad5fda92e 16
+README.md
+  s_4aec094845d63e::t_c4d36ad5fda92e 20,32,49
+testing/contract/moon.yml
+  s_4aec094845d63e::t_c4d36ad5fda92e 7
+testing/contract/Cargo.toml
+  s_4aec094845d63e::t_c4d36ad5fda92e 6
+testing/contract/src/diff.rs
+  s_4aec094845d63e::t_c4d36ad5fda92e 64
+testing/contract/src/lib.rs
+  s_4aec094845d63e::t_c4d36ad5fda92e 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e7fb1b5a60c770f7380891a340a91069ca1f1782",
+  "prompts": {},
+  "sessions": {
+    "s_4aec094845d63e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a017c0-85d4-72e1-946f-adebcb4f5ac0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
