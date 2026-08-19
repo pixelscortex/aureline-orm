@@ -1,5 +1,5 @@
 use aureline_ast::{
-    ast::{CommentKind, SourceType},
+    ast::{CommentKind, SourceType, TypeArgument},
     source::{SourceId, SourceSpan, TextRange, TextSize},
 };
 use aureline_parser::{IdentifierProblem, SyntaxProblem};
@@ -23,6 +23,153 @@ fn tables_declare_fields_with_meaning_free_source_type_names() {
                 (Field nickname (Name string)))
             (Table audit_log Schemaless
                 (Field message (Name FutureType))))",
+    );
+}
+
+#[test]
+fn a_type_name_applies_to_a_type_argument() {
+    aurl_test!("table User schemafull { names array<string> }").parses_as(
+        "(SourceFile
+            (Table User Schemafull
+                (Field names
+                    (Application
+                        (Name array)
+                        (Type (Name string))))))",
+    );
+}
+
+#[test]
+fn type_applications_preserve_ordered_type_and_integer_arguments() {
+    aurl_test!("table Place schemafull { coordinates array<float, 3> }").parses_as(
+        "(SourceFile
+            (Table Place Schemafull
+                (Field coordinates
+                    (Application
+                        (Name array)
+                        (Type (Name float))
+                        (Integer 3)))))",
+    );
+}
+
+#[test]
+fn type_applications_are_recursive_open_and_meaning_free() {
+    aurl_test!(
+        "table Shape schemafull {\n\
+           future FutureType\n\
+           custom custom_type<string, 003>\n\
+           nested array<array<float, 3>, 2>\n\
+           optional option<string>\n\
+           array_name array\n\
+           record_name record\n\
+           record_value record<User>\n\
+           spaced array< string >\n\
+         }"
+    )
+    .parses_as(
+        "(SourceFile
+            (Table Shape Schemafull
+                (Field future (Name FutureType))
+                (Field custom
+                    (Application
+                        (Name custom_type)
+                        (Type (Name string))
+                        (Integer 003)))
+                (Field nested
+                    (Application
+                        (Name array)
+                        (Type
+                            (Application
+                                (Name array)
+                                (Type (Name float))
+                                (Integer 3)))
+                        (Integer 2)))
+                (Field optional
+                    (Application (Name option) (Type (Name string))))
+                (Field array_name (Name array))
+                (Field record_name (Name record))
+                (Field record_value
+                    (Application (Name record) (Type (Name User))))
+                (Field spaced
+                    (Application (Name array) (Type (Name string))))))",
+    );
+}
+
+#[test]
+fn recursive_type_applications_retain_precise_spans_and_integer_spelling() {
+    let source_id = SourceId::new(17);
+    let ast = aureline_parser::parse_with_source(
+        source_id,
+        "table T schemafull { value custom_type<array<float, 3>, 003> }",
+    )
+    .expect("recursive applications should parse");
+    let table = ast
+        .table(ast.root().tables()[0])
+        .expect("the table ID belongs to this AST");
+    let field = ast
+        .field(table.fields()[0])
+        .expect("the field ID belongs to this AST");
+
+    let SourceType::Application(outer) = field.source_type() else {
+        panic!("the field uses an applied source type");
+    };
+    assert_eq!(outer.name().name(), "custom_type");
+    assert_eq!(outer.name().span(), span(source_id, 27, 38));
+    assert_eq!(outer.span(), span(source_id, 27, 60));
+    assert_eq!(outer.arguments().len(), 2);
+
+    let TypeArgument::Type(SourceType::Application(inner)) = &outer.arguments()[0] else {
+        panic!("the first argument is a nested application");
+    };
+    assert_eq!(inner.name().name(), "array");
+    assert_eq!(inner.name().span(), span(source_id, 39, 44));
+    assert_eq!(inner.span(), span(source_id, 39, 54));
+    assert_eq!(inner.arguments()[0].span(), span(source_id, 45, 50));
+    let TypeArgument::Integer(length) = &inner.arguments()[1] else {
+        panic!("the nested second argument is an integer");
+    };
+    assert_eq!(length.raw(), "3");
+    assert_eq!(length.span(), span(source_id, 52, 53));
+
+    let TypeArgument::Integer(length) = &outer.arguments()[1] else {
+        panic!("the outer second argument is an integer");
+    };
+    assert_eq!(length.raw(), "003");
+    assert_eq!(length.span(), span(source_id, 56, 59));
+}
+
+#[test]
+fn an_empty_type_argument_list_is_incomplete() {
+    let errors = aureline_parser::parse("table User schemafull { values array<> }")
+        .expect_err("a type application requires at least one argument");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::EmptyTypeArguments {
+            span: span(SourceId::new(0), 36, 38),
+        }]
+    );
+}
+
+#[test]
+fn a_trailing_type_argument_comma_is_incomplete() {
+    let errors = aureline_parser::parse("table User schemafull { values array<string,> }")
+        .expect_err("a comma must be followed by another type argument");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::TrailingTypeArgumentComma {
+            span: span(SourceId::new(0), 43, 44),
+        }]
+    );
+}
+
+#[test]
+fn postfix_optional_type_syntax_directs_callers_to_option_application() {
+    let errors = aureline_parser::parse("table User schemafull { value string? }")
+        .expect_err("optional types use option<T>, not postfix question marks");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::PostfixOptionalType {
+            span: span(SourceId::new(0), 36, 37),
+        }]
     );
 }
 
@@ -163,7 +310,9 @@ fn field_arena_preserves_ownership_source_order_and_precise_spans() {
     assert_eq!(name.span(), span(source_id, 24, 35));
     assert_eq!(name.name_span(), span(source_id, 24, 28));
     assert_eq!(name.source_type().span(), span(source_id, 29, 35));
-    let SourceType::Name(type_name) = name.source_type();
+    let SourceType::Name(type_name) = name.source_type() else {
+        panic!("the field uses a bare source type name");
+    };
     assert_eq!(type_name.name(), "string");
     assert_eq!(type_name.span(), span(source_id, 29, 35));
 
@@ -197,16 +346,19 @@ fn unsupported_field_separators_are_typed_syntax_problems() {
         [SyntaxProblem::UnexpectedToken { .. }]
     ));
 
-    for source in [
-        "table User schemafull { name string, }",
-        "table User schemafull { name string; }",
-    ] {
-        let errors = aureline_parser::parse(source).expect_err("punctuation is not a separator");
-        assert!(matches!(
-            errors.as_slice(),
-            [SyntaxProblem::InvalidToken { .. }]
-        ));
-    }
+    let comma = aureline_parser::parse("table User schemafull { name string, }")
+        .expect_err("a comma is not a field separator");
+    assert!(matches!(
+        comma.as_slice(),
+        [SyntaxProblem::UnexpectedToken { .. }]
+    ));
+
+    let semicolon = aureline_parser::parse("table User schemafull { name string; }")
+        .expect_err("a semicolon is not a field separator");
+    assert!(matches!(
+        semicolon.as_slice(),
+        [SyntaxProblem::InvalidToken { .. }]
+    ));
 }
 
 #[test]
@@ -221,6 +373,24 @@ fn identifier_cannot_start_with_a_digit() {
             span: span(SourceId::new(0), 6, 7),
         }]
     );
+}
+
+#[test]
+fn a_pure_integer_cannot_be_a_declared_name() {
+    for (source, start, end) in [
+        ("table 1 schemafull {}", 6, 7),
+        ("table User schemafull { 1 string }", 24, 25),
+    ] {
+        let errors = aureline_parser::parse(source)
+            .expect_err("an integer cannot be used as a declared name");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::InvalidIdentifier {
+                problem: IdentifierProblem::StartsWithDigit,
+                span: span(SourceId::new(0), start, end),
+            }]
+        );
+    }
 }
 
 #[test]
@@ -252,6 +422,42 @@ fn identifier_punctuation_reports_its_specific_boundary() {
             "table User@Name schemafull {}",
             IdentifierProblem::ContainsPunctuation('@'),
         ),
+        (
+            "table User?Name schemafull {}",
+            IdentifierProblem::ContainsPunctuation('?'),
+        ),
+        (
+            "table User<Name schemafull {}",
+            IdentifierProblem::ContainsPunctuation('<'),
+        ),
+        (
+            "table User>Name schemafull {}",
+            IdentifierProblem::ContainsPunctuation('>'),
+        ),
+        (
+            "table User,Name schemafull {}",
+            IdentifierProblem::ContainsPunctuation(','),
+        ),
+        (
+            "table User??Name schemafull {}",
+            IdentifierProblem::ContainsPunctuation('?'),
+        ),
+        (
+            "table User?Name,More schemafull {}",
+            IdentifierProblem::ContainsPunctuation('?'),
+        ),
+        (
+            "table User?Name , More schemafull {}",
+            IdentifierProblem::ContainsPunctuation('?'),
+        ),
+        (
+            "table User?1 schemafull {}",
+            IdentifierProblem::ContainsPunctuation('?'),
+        ),
+        (
+            "table User?table schemafull {}",
+            IdentifierProblem::ContainsPunctuation('?'),
+        ),
     ] {
         let errors = aureline_parser::parse(source)
             .expect_err("an identifier cannot contain ASCII punctuation");
@@ -263,6 +469,48 @@ fn identifier_punctuation_reports_its_specific_boundary() {
                 span: span(SourceId::new(0), 10, 11),
             }]
         );
+    }
+
+    let errors = aureline_parser::parse("table array<string> schemafull {}")
+        .expect_err("an applied type shape cannot be a table name");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsPunctuation('<'),
+            span: span(SourceId::new(0), 11, 12),
+        }]
+    );
+
+    let errors = aureline_parser::parse("table array<3> schemafull {}")
+        .expect_err("an integer argument shape cannot be a table name");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsPunctuation('<'),
+            span: span(SourceId::new(0), 11, 12),
+        }]
+    );
+
+    let errors = aureline_parser::parse("table array<string,3> schemafull {}")
+        .expect_err("a multi-argument application shape cannot be a table name");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsPunctuation('<'),
+            span: span(SourceId::new(0), 11, 12),
+        }]
+    );
+
+    for source in [
+        "table User ? Name schemafull {}",
+        "table User schemafull { na ? me string }",
+    ] {
+        let errors = aureline_parser::parse(source)
+            .expect_err("separate punctuation is syntax, not part of an identifier");
+        assert!(matches!(
+            errors.as_slice(),
+            [SyntaxProblem::UnexpectedToken { .. }]
+        ));
     }
 }
 
@@ -399,6 +647,43 @@ fn field_names_share_the_identifier_boundary() {
             vec![SyntaxProblem::InvalidIdentifier {
                 problem,
                 span: span(SourceId::new(0), start, end),
+            }]
+        );
+    }
+}
+
+#[test]
+fn structural_type_punctuation_in_field_names_retains_the_first_violation() {
+    for (candidate, punctuation) in [
+        ("na?me", '?'),
+        ("na<me", '<'),
+        ("na>me", '>'),
+        ("na,me", ','),
+        ("na??me", '?'),
+        ("na?me,more", '?'),
+        ("na?me , more", '?'),
+        ("User?1", '?'),
+        ("User?table", '?'),
+        ("array<string>", '<'),
+        ("array<3>", '<'),
+        ("array<string,3>", '<'),
+    ] {
+        let source = format!("table User schemafull {{ {candidate} string }}");
+        let punctuation_offset = candidate
+            .find(punctuation)
+            .expect("the case contains its expected punctuation");
+        let candidate_start = source
+            .find(candidate)
+            .expect("the generated source contains the field-name candidate");
+        let start = u32::try_from(candidate_start + punctuation_offset)
+            .expect("the short contract source fits Aureline text offsets");
+        let errors = aureline_parser::parse(&source)
+            .expect_err("structural punctuation cannot occur in a field name");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::InvalidIdentifier {
+                problem: IdentifierProblem::ContainsPunctuation(punctuation),
+                span: span(SourceId::new(0), start, start + 1),
             }]
         );
     }

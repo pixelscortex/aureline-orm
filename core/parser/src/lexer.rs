@@ -43,7 +43,14 @@ pub(crate) fn lexer<'src>()
             vec![identifier_occurrence(candidate, context.span())]
         });
 
-    let punctuation = choice((just('{').to(Token::LBrace), just('}').to(Token::RBrace)));
+    let punctuation = choice((
+        just('{').to(Token::LBrace),
+        just('}').to(Token::RBrace),
+        just('<').to(Token::LAngle),
+        just('>').to(Token::RAngle),
+        just(',').to(Token::Comma),
+        just('?').to(Token::Question),
+    ));
 
     let backtick_identifier = just('`')
         .then(any().and_is(just('`').not()).repeated())
@@ -128,10 +135,21 @@ fn is_identifier_atom(character: char) -> bool {
 }
 
 fn is_internal_identifier_punctuation(character: char) -> bool {
-    character.is_ascii_punctuation() && !matches!(character, '_' | '`' | '{' | '}' | '/')
+    character.is_ascii_punctuation()
+        && !matches!(
+            character,
+            '_' | '`' | '{' | '}' | '<' | '>' | ',' | '?' | '/'
+        )
 }
 
 fn identifier_occurrence(candidate: &str, span: SimpleSpan) -> LexerOccurrence<'_> {
+    if candidate.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Spanned {
+            inner: Lexeme::Token(Token::Integer(candidate)),
+            span,
+        };
+    }
+
     if let Some((problem, offset, byte_len)) = identifier_problem(candidate) {
         return Spanned {
             inner: Lexeme::InvalidIdentifier(problem),

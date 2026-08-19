@@ -254,6 +254,7 @@ impl FieldDecl {
 #[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub enum SourceType {
     Name(TypeName),
+    Application(TypeApplication),
 }
 
 impl SourceType {
@@ -262,17 +263,142 @@ impl SourceType {
         Self::Name(TypeName::new(name, span))
     }
 
+    /// Creates an application with a non-empty, source-ordered argument list.
+    ///
+    /// `name_span` covers only the applied name, while `span` covers the complete
+    /// application. `name_span`, `span`, and every argument span must share one
+    /// source, and the child spans must be contained by `span`; this constructor
+    /// does not validate those provenance relationships.
+    #[must_use]
+    pub fn application(
+        name: impl Into<String>,
+        name_span: SourceSpan,
+        first_argument: TypeArgument,
+        remaining_arguments: Vec<TypeArgument>,
+        span: SourceSpan,
+    ) -> Self {
+        Self::Application(TypeApplication::new(
+            name,
+            name_span,
+            first_argument,
+            remaining_arguments,
+            span,
+        ))
+    }
+
     #[must_use]
     pub fn span(&self) -> SourceSpan {
         match self {
             Self::Name(name) => name.span(),
+            Self::Application(application) => application.span(),
         }
+    }
+}
+
+/// A meaning-free application of one type name to a non-empty, ordered argument list.
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+pub struct TypeApplication {
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    span: SourceSpan,
+    name: TypeName,
+    arguments: Vec<TypeArgument>,
+}
+
+impl TypeApplication {
+    fn new(
+        name: impl Into<String>,
+        name_span: SourceSpan,
+        first_argument: TypeArgument,
+        remaining_arguments: Vec<TypeArgument>,
+        span: SourceSpan,
+    ) -> Self {
+        let mut arguments = Vec::with_capacity(remaining_arguments.len() + 1);
+        arguments.push(first_argument);
+        arguments.extend(remaining_arguments);
+        Self {
+            span,
+            name: TypeName::new(name, name_span),
+            arguments,
+        }
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        self.span
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &TypeName {
+        &self.name
+    }
+
+    #[must_use]
+    pub fn arguments(&self) -> &[TypeArgument] {
+        &self.arguments
+    }
+}
+
+/// One ordered, uninterpreted argument in a type application.
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+pub enum TypeArgument {
+    Type(SourceType),
+    Integer(IntegerArgument),
+}
+
+impl TypeArgument {
+    /// Records an integer argument's exact source spelling without interpreting it.
+    ///
+    /// `raw` must be the original, non-empty ASCII digit sequence covered by
+    /// `span`. It is preserved byte-for-byte, including leading zeroes; this
+    /// constructor does not validate either the spelling or its provenance.
+    #[must_use]
+    pub fn integer(raw: impl Into<String>, span: SourceSpan) -> Self {
+        Self::Integer(IntegerArgument::new(raw, span))
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Type(source_type) => source_type.span(),
+            Self::Integer(integer) => integer.span(),
+        }
+    }
+}
+
+/// An uninterpreted integer argument and its exact source location.
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+pub struct IntegerArgument {
+    raw: String,
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    span: SourceSpan,
+}
+
+impl IntegerArgument {
+    fn new(raw: impl Into<String>, span: SourceSpan) -> Self {
+        Self {
+            raw: raw.into(),
+            span,
+        }
+    }
+
+    #[must_use]
+    pub fn raw(&self) -> &str {
+        &self.raw
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        self.span
     }
 }
 
 /// An exact, case-sensitive name reference and its source location.
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+#[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Name"))]
 pub struct TypeName {
     name: String,
     #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]

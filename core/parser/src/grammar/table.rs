@@ -1,7 +1,10 @@
 use aureline_ast::{TableFieldBuilder, ast::SourceType, source::SourceSpan, tokens::Token};
 use chumsky::prelude::*;
 
-use crate::grammar::{GrammarProblem, ParserExtra, TokenInput, ident, schema_type_parser};
+use crate::grammar::{
+    GrammarProblem, ParserExtra, TokenInput, applied_source_type_parser, ident, integer,
+    punctuated_identifier, schema_type_parser, source_type_parser,
+};
 
 struct ParsedField {
     span: SourceSpan,
@@ -40,22 +43,46 @@ fn field_parser<'tokens, 'src: 'tokens>()
             });
 
     let field = ident()
-        .then(ident())
+        .then(source_type_parser())
         .map_with(|(name, source_type), context| {
             let field_span = context.span();
             let state = &context.state().0;
-            let source_type_span = state.source_span(source_type.span);
-            FieldOutcome::Field(ParsedField {
-                span: state.source_span(field_span),
-                name: name.inner,
-                name_span: state.source_span(name.span),
-                source_type: SourceType::name(source_type.inner, source_type_span),
-            })
+            match source_type.into_result() {
+                Ok(source_type) => FieldOutcome::Field(ParsedField {
+                    span: state.source_span(field_span),
+                    name: name.inner,
+                    name_span: state.source_span(name.span),
+                    source_type,
+                }),
+                Err(problem) => FieldOutcome::Problem(problem),
+            }
         });
+
+    // Pure digits are Integer tokens for type arguments; recover them before
+    // normal field parsing when they occupy the declared-name slot.
+    let integer_name = integer().then(source_type_parser()).map(|(name, _)| {
+        FieldOutcome::Problem(GrammarProblem::IdentifierStartsWithDigit(name.span))
+    });
+
+    // Consume the complete recursive application before the general compound
+    // recovery can absorb the following field type as another name suffix.
+    let applied_name = applied_source_type_parser()
+        .then(source_type_parser())
+        .map(|(problem, _)| FieldOutcome::Problem(problem));
+
+    let punctuated_name = punctuated_identifier()
+        .then(source_type_parser())
+        .map(|(name, _)| FieldOutcome::Problem(name.into_problem()));
 
     // Try the three-word form first so one physical `split name type` field can
     // retain its identifier-specific whitespace problem.
-    choice((split_name, field))
+    choice((
+        split_name,
+        integer_name,
+        applied_name,
+        punctuated_name,
+        field,
+    ))
 }
 
 struct ParsedTableHeader {
@@ -109,6 +136,28 @@ fn table_body_parser<'tokens, 'src: 'tokens>()
 
 pub(crate) fn table_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<GrammarProblem>, ParserExtra> {
+    // Pure digits are Integer tokens for type arguments; recover them before
+    // normal table parsing when they occupy the declared-name slot.
+    let integer_name = just(Token::Table)
+        .ignore_then(integer())
+        .then(schema_type_parser())
+        .then(table_body_parser())
+        .map(|((name, _), _)| Some(GrammarProblem::IdentifierStartsWithDigit(name.span)));
+
+    // As in field recovery, consume the complete recursive application before
+    // the general compound branch can absorb the following schema mode.
+    let applied_name = just(Token::Table)
+        .ignore_then(applied_source_type_parser())
+        .then(schema_type_parser())
+        .then(table_body_parser())
+        .map(|((problem, _), _)| Some(problem));
+
+    let punctuated_name = just(Token::Table)
+        .ignore_then(punctuated_identifier())
+        .then(schema_type_parser())
+        .then(table_body_parser())
+        .map(|((name, _), _)| Some(name.into_problem()));
+
     // Recover `table name unknown { ... }` before the normal header alternatives
     // so the unknown schema word itself remains the unexpected token.
     let missing_schema_type = just(Token::Table)
@@ -157,5 +206,11 @@ pub(crate) fn table_parser<'tokens, 'src: 'tokens>()
             None
         });
 
-    choice((missing_schema_type, table))
+    choice((
+        integer_name,
+        applied_name,
+        punctuated_name,
+        missing_schema_type,
+        table,
+    ))
 }
