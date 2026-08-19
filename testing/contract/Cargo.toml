@@ -15,5 +15,8 @@ aureline-parser = { path = "../../core/parser", features = ["unstable-test-norma
 chumsky = "0.13.0"
 serde = "1"
 
+[dev-dependencies]
+aureline-ast = { path = "../../core/ast" }
+
 [lints]
 workspace = true

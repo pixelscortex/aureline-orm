@@ -63,6 +63,7 @@ dependencies = [
 name = "aureline-test"
 version = "0.0.0"
 dependencies = [
+ "aureline-ast",
  "aureline-parser",
  "chumsky",
  "serde",

@@ -1,8 +1,11 @@
 use aureline_ast::tokens::Token;
-use chumsky::prelude::*;
+use chumsky::{error::Cheap, extra, prelude::*};
+
+pub(crate) type TokenOccurrence<'src> = Spanned<Token<'src>>;
 
 #[must_use]
-pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<aureline_ast::tokens::Token<'src>>> {
+pub(crate) fn lexer<'src>()
+-> impl Parser<'src, &'src str, Vec<TokenOccurrence<'src>>, extra::Err<Cheap<SimpleSpan>>> {
     let word = text::ident().map(|word: &'src str| match word {
         "table" => Token::Table,
         "schemafull" => Token::Schemafull,
@@ -12,7 +15,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<aureline_ast::tokens::T
 
     let punctuation = choice((just('{').to(Token::LBrace), just('}').to(Token::RBrace)));
 
-    let token = choice((text::newline().to(Token::Newline), word, punctuation));
+    let token = choice((text::newline().to(Token::Newline), word, punctuation)).spanned();
 
     token
         // Ignore spaces and tabs around Token, but preserve newlines as real

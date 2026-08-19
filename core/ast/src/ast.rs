@@ -1,4 +1,4 @@
-use crate::{arena::Arena, ids::ItemId};
+use crate::{arena::Arena, ids::ItemId, source::SourceSpan};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
@@ -55,16 +55,42 @@ pub enum Item {
 #[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 #[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Table"))]
 pub struct TableDecl {
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    span: SourceSpan,
     name: String,
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    name_span: SourceSpan,
     schema_type: SchemaType,
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    schema_type_span: SourceSpan,
 }
 
 impl TableDecl {
-    pub fn new(name: impl Into<String>, schema_type: SchemaType) -> Self {
+    /// Creates a table declaration with its precise source locations.
+    ///
+    /// `name_span` and `schema_type_span` must use the same source as `span` and
+    /// must be contained by it. This constructor does not validate that relationship;
+    /// callers that violate it create a declaration whose reported provenance cannot
+    /// be trusted.
+    pub fn new(
+        span: SourceSpan,
+        name: impl Into<String>,
+        name_span: SourceSpan,
+        schema_type: SchemaType,
+        schema_type_span: SourceSpan,
+    ) -> Self {
         Self {
+            span,
             name: name.into(),
+            name_span,
             schema_type,
+            schema_type_span,
         }
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        self.span
     }
 
     #[must_use]
@@ -73,8 +99,18 @@ impl TableDecl {
     }
 
     #[must_use]
+    pub fn name_span(&self) -> SourceSpan {
+        self.name_span
+    }
+
+    #[must_use]
     pub fn schema_type(&self) -> SchemaType {
         self.schema_type
+    }
+
+    #[must_use]
+    pub fn schema_type_span(&self) -> SourceSpan {
+        self.schema_type_span
     }
 }
 
