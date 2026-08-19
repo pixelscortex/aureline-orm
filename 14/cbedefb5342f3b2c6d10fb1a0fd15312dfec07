@@ -1,0 +1,66 @@
+core/ast/src/arena.rs
+  s_4aec094845d63e::t_7a6f8d2050d7a8 3-5,7-9,51-68
+  s_4aec094845d63e::t_49b4671654ae94 69-70
+testing/aureline-test/src/lib.rs
+  s_4aec094845d63e::t_703c41d92781b1 18-32
+  s_4aec094845d63e::t_7a6f8d2050d7a8 1-5,16-17,33-43
+  s_4aec094845d63e::t_ac1a149263bde1 6-15,44-52
+Cargo.toml
+  s_4aec094845d63e::t_ac1a149263bde1 2
+core/ast/src/ast.rs
+  s_4aec094845d63e::t_7a6f8d2050d7a8 5
+  s_4aec094845d63e::t_b7813b5be8f91c 30,50,56
+  s_4aec094845d63e::t_80ba33b75e7348 4,7,29,48,55,82,84,86
+testing/aureline-test/src/normalizer.rs
+  s_4aec094845d63e::t_7a6f8d2050d7a8 7-13,17-115,117-530,532-550,553-628
+  s_4aec094845d63e::t_80ba33b75e7348 14-16,116,531,551-552
+  s_4aec094845d63e::t_e521c7b7823cec 1-6
+core/parser/Cargo.toml
+  s_4aec094845d63e::t_7a6f8d2050d7a8 12-14
+.moon/workspace.yml
+  s_4aec094845d63e::t_e521c7b7823cec 3
+testing/aureline-test/tests/parser.rs
+  s_4aec094845d63e::t_ac1a149263bde1 1-4,6
+  s_4aec094845d63e::t_80ba33b75e7348 5
+testing/aureline-test/moon.yml
+  s_4aec094845d63e::t_e521c7b7823cec 1-37
+README.md
+  s_4aec094845d63e::t_e521c7b7823cec 11,19-20
+testing/aureline-test/Cargo.toml
+  s_4aec094845d63e::t_7a6f8d2050d7a8 14-16
+  s_4aec094845d63e::t_ac1a149263bde1 1-13,17-19
+core/ast/Cargo.toml
+  s_4aec094845d63e::t_7a6f8d2050d7a8 12-14
+testing/aureline-test/src/diff.rs
+  s_4aec094845d63e::t_80ba33b75e7348 54
+  s_4aec094845d63e::t_703c41d92781b1 57-85
+  s_4aec094845d63e::t_7a6f8d2050d7a8 1-53,55-56
+testing/aureline-test/src/sexpr.rs
+  s_4aec094845d63e::t_80ba33b75e7348 64
+  s_4aec094845d63e::t_7a6f8d2050d7a8 1-63,65-84
+testing/aureline-test/src/matcher.rs
+  s_4aec094845d63e::t_7a6f8d2050d7a8 1-8
+  s_4aec094845d63e::t_703c41d92781b1 9-18,20-21
+  s_4aec094845d63e::t_591dbe8611a058 19
+core/ast/src/ids.rs
+  s_4aec094845d63e::t_7a6f8d2050d7a8 9-11,25-40
+  s_4aec094845d63e::t_bc08a6972abd5a 41-42
+Cargo.lock
+  s_4aec094845d63e::t_f4c7e34dffc820 62-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "14cbedefb5342f3b2c6d10fb1a0fd15312dfec07",
+  "prompts": {},
+  "sessions": {
+    "s_4aec094845d63e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a017c0-85d4-72e1-946f-adebcb4f5ac0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
