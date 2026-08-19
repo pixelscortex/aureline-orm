@@ -48,6 +48,8 @@ pub(crate) fn lexer<'src>()
         just('}').to(Token::RBrace),
         just('<').to(Token::LAngle),
         just('>').to(Token::RAngle),
+        just('[').to(Token::LBracket),
+        just(']').to(Token::RBracket),
         just(',').to(Token::Comma),
         just('?').to(Token::Question),
         just('|').to(Token::Pipe),
@@ -139,7 +141,7 @@ fn is_internal_identifier_punctuation(character: char) -> bool {
     character.is_ascii_punctuation()
         && !matches!(
             character,
-            '_' | '`' | '{' | '}' | '<' | '>' | ',' | '?' | '|' | '/'
+            '_' | '`' | '{' | '}' | '<' | '>' | '[' | ']' | ',' | '?' | '|' | '/'
         )
 }
 

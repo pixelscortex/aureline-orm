@@ -256,6 +256,7 @@ pub enum SourceType {
     Name(TypeName),
     Application(TypeApplication),
     Union(TypeUnion),
+    Tuple(TypeTuple),
 }
 
 impl SourceType {
@@ -308,13 +309,46 @@ impl SourceType {
         ))
     }
 
+    /// Creates a fixed tuple with members in exact source order.
+    ///
+    /// Empty and single-member tuples are valid. Members must not be widened,
+    /// flattened, reordered, deduplicated, or semantically resolved. `span` and
+    /// every member span must share one source, and each member must be contained
+    /// by `span`; this constructor does not validate those provenance relationships.
+    #[must_use]
+    pub fn tuple(members: Vec<SourceType>, span: SourceSpan) -> Self {
+        Self::Tuple(TypeTuple { span, members })
+    }
+
     #[must_use]
     pub fn span(&self) -> SourceSpan {
         match self {
             Self::Name(name) => name.span(),
             Self::Application(application) => application.span(),
             Self::Union(union) => union.span(),
+            Self::Tuple(tuple) => tuple.span(),
         }
+    }
+}
+
+/// A fixed, source-ordered tuple of zero or more meaning-free member types.
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+pub struct TypeTuple {
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    span: SourceSpan,
+    members: Vec<SourceType>,
+}
+
+impl TypeTuple {
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        self.span
+    }
+
+    #[must_use]
+    pub fn members(&self) -> &[SourceType] {
+        &self.members
     }
 }
 

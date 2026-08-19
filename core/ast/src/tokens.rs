@@ -11,6 +11,8 @@ pub enum Token<'src> {
     RBrace,
     LAngle,
     RAngle,
+    LBracket,
+    RBracket,
     Comma,
     Question,
     Pipe,

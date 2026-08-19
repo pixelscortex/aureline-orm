@@ -51,6 +51,12 @@ pub enum SyntaxProblem {
     PostfixOptionalType { span: SourceSpan },
     /// A union pipe was missing a member on at least one side; `span` covers the offending `|`.
     MissingUnionMember { span: SourceSpan },
+    /// A tuple comma was missing a member; `span` covers the offending comma.
+    MissingTupleMember { span: SourceSpan },
+    /// A tuple member began without a comma; `span` covers that member.
+    MissingTupleSeparator { span: SourceSpan },
+    /// A type used postfix `[]`; `span` covers `[]`. Array types use `array<T>`.
+    PostfixArrayType { span: SourceSpan },
     /// A block comment reached the end of input; `span` points at its opening delimiter.
     UnterminatedBlockComment { span: SourceSpan },
     /// The token stream did not match the grammar; `span` covers the unexpected
@@ -131,43 +137,49 @@ pub fn parse_with_source(source_id: SourceId, source: &str) -> Result<Ast, Vec<S
             })
             .collect(),
         grammar::ParseTokensError::Problem(problem) => {
-            let span = source_span(source_id, problem.span());
-            let problem = match problem {
-                grammar::GrammarProblem::IdentifierWhitespace(_) => {
-                    SyntaxProblem::InvalidIdentifier {
-                        problem: IdentifierProblem::ContainsWhitespace,
-                        span,
-                    }
-                }
-                grammar::GrammarProblem::IdentifierStartsWithDigit(_) => {
-                    SyntaxProblem::InvalidIdentifier {
-                        problem: IdentifierProblem::StartsWithDigit,
-                        span,
-                    }
-                }
-                grammar::GrammarProblem::IdentifierPunctuation(punctuation, _) => {
-                    SyntaxProblem::InvalidIdentifier {
-                        problem: IdentifierProblem::ContainsPunctuation(punctuation),
-                        span,
-                    }
-                }
-                grammar::GrammarProblem::EmptyTypeArguments(_) => {
-                    SyntaxProblem::EmptyTypeArguments { span }
-                }
-                grammar::GrammarProblem::TrailingTypeArgumentComma(_) => {
-                    SyntaxProblem::TrailingTypeArgumentComma { span }
-                }
-                grammar::GrammarProblem::PostfixOptionalType(_) => {
-                    SyntaxProblem::PostfixOptionalType { span }
-                }
-                grammar::GrammarProblem::MissingUnionMember(_) => {
-                    SyntaxProblem::MissingUnionMember { span }
-                }
-                grammar::GrammarProblem::Unexpected(_) => SyntaxProblem::UnexpectedToken { span },
-            };
-            vec![problem]
+            vec![syntax_problem(source_id, problem)]
         }
     })
+}
+
+fn syntax_problem(source: SourceId, problem: grammar::GrammarProblem) -> SyntaxProblem {
+    let span = source_span(source, problem.span());
+    match problem {
+        grammar::GrammarProblem::IdentifierWhitespace(_) => SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsWhitespace,
+            span,
+        },
+        grammar::GrammarProblem::IdentifierStartsWithDigit(_) => SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::StartsWithDigit,
+            span,
+        },
+        grammar::GrammarProblem::IdentifierPunctuation(punctuation, _) => {
+            SyntaxProblem::InvalidIdentifier {
+                problem: IdentifierProblem::ContainsPunctuation(punctuation),
+                span,
+            }
+        }
+        grammar::GrammarProblem::EmptyTypeArguments(_) => {
+            SyntaxProblem::EmptyTypeArguments { span }
+        }
+        grammar::GrammarProblem::TrailingTypeArgumentComma(_) => {
+            SyntaxProblem::TrailingTypeArgumentComma { span }
+        }
+        grammar::GrammarProblem::PostfixOptionalType(_) => {
+            SyntaxProblem::PostfixOptionalType { span }
+        }
+        grammar::GrammarProblem::MissingUnionMember(_) => {
+            SyntaxProblem::MissingUnionMember { span }
+        }
+        grammar::GrammarProblem::MissingTupleMember(_) => {
+            SyntaxProblem::MissingTupleMember { span }
+        }
+        grammar::GrammarProblem::MissingTupleSeparator(_) => {
+            SyntaxProblem::MissingTupleSeparator { span }
+        }
+        grammar::GrammarProblem::PostfixArrayType(_) => SyntaxProblem::PostfixArrayType { span },
+        grammar::GrammarProblem::Unexpected(_) => SyntaxProblem::UnexpectedToken { span },
+    }
 }
 
 fn source_span(source: SourceId, span: SimpleSpan) -> SourceSpan {

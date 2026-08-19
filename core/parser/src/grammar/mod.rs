@@ -30,6 +30,9 @@ pub(crate) enum GrammarProblem {
     TrailingTypeArgumentComma(SimpleSpan),
     PostfixOptionalType(SimpleSpan),
     MissingUnionMember(SimpleSpan),
+    MissingTupleMember(SimpleSpan),
+    MissingTupleSeparator(SimpleSpan),
+    PostfixArrayType(SimpleSpan),
     Unexpected(SimpleSpan),
 }
 
@@ -43,6 +46,9 @@ impl GrammarProblem {
             | Self::TrailingTypeArgumentComma(span)
             | Self::PostfixOptionalType(span)
             | Self::MissingUnionMember(span)
+            | Self::MissingTupleMember(span)
+            | Self::MissingTupleSeparator(span)
+            | Self::PostfixArrayType(span)
             | Self::Unexpected(span) => span,
         }
     }
@@ -69,12 +75,37 @@ impl ApplicationMark {
     }
 }
 
+#[derive(Clone, Copy)]
+struct PostfixArrayMark {
+    opening: SimpleSpan,
+    joined_to_type: bool,
+}
+
+impl PostfixArrayMark {
+    const fn into_declared_name_problem(self) -> GrammarProblem {
+        if self.joined_to_type {
+            GrammarProblem::IdentifierPunctuation('[', self.opening)
+        } else {
+            GrammarProblem::Unexpected(self.opening)
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct PostfixArraySyntax {
+    opening: SimpleSpan,
+    brackets: SimpleSpan,
+}
+
 /// Lets recursive parsing consume a malformed type without constructing an
-/// invalid public [`SourceType`], while retaining an application opener for
-/// contextual declared-name recovery.
+/// invalid public [`SourceType`], while retaining structural marks needed for
+/// contextual declared-name recovery. Marks describe only the outer parsed
+/// shape; aggregate `valid` and `recovered` construction clears them so nested
+/// punctuation cannot be reclassified as part of a declared name.
 pub(crate) struct ParsedSourceType {
     outcome: Result<SourceType, GrammarProblem>,
     application: Option<ApplicationMark>,
+    postfix_array: Option<PostfixArrayMark>,
 }
 
 impl ParsedSourceType {
@@ -82,6 +113,7 @@ impl ParsedSourceType {
         Self {
             outcome: Ok(source_type),
             application: None,
+            postfix_array: None,
         }
     }
 
@@ -89,6 +121,7 @@ impl ParsedSourceType {
         Self {
             outcome: Err(problem),
             application: None,
+            postfix_array: None,
         }
     }
 
@@ -103,6 +136,7 @@ impl ParsedSourceType {
                 opening,
                 joined_to_name: name.end == opening.start,
             }),
+            postfix_array: None,
         }
     }
 
@@ -113,9 +147,30 @@ impl ParsedSourceType {
         self
     }
 
+    fn with_postfix_array(mut self, syntax: Option<PostfixArraySyntax>) -> Self {
+        if let (Ok(source_type), Some(syntax)) = (&self.outcome, syntax) {
+            // Public type spans and parser token spans share the source byte
+            // origin, so equal boundaries mean `[` was joined to the type.
+            let source_end = source_type.span().range().end().get();
+            self.postfix_array = Some(PostfixArrayMark {
+                opening: syntax.opening,
+                joined_to_type: u32::try_from(syntax.opening.start)
+                    .is_ok_and(|opening| source_end == opening),
+            });
+            self.outcome = Err(GrammarProblem::PostfixArrayType(syntax.brackets));
+        }
+        self
+    }
+
     fn declared_name_problem(&self) -> Option<GrammarProblem> {
+        // An application's `<` precedes any postfix `[]`, so it remains the
+        // first declared-name violation when both marks are present.
         self.application
             .map(ApplicationMark::into_declared_name_problem)
+            .or_else(|| {
+                self.postfix_array
+                    .map(PostfixArrayMark::into_declared_name_problem)
+            })
     }
 
     pub(crate) fn into_result(self) -> Result<SourceType, GrammarProblem> {
@@ -258,6 +313,8 @@ pub(crate) fn identifier_punctuation<'tokens, 'src: 'tokens>()
     choice((
         just(Token::LAngle).to('<'),
         just(Token::RAngle).to('>'),
+        just(Token::LBracket).to('['),
+        just(Token::RBracket).to(']'),
         just(Token::Comma).to(','),
         just(Token::Question).to('?'),
         just(Token::Pipe).to('|'),
@@ -337,11 +394,11 @@ pub(crate) fn punctuated_identifier<'tokens, 'src: 'tokens>()
         })
 }
 
-/// Consumes a complete recursive application shape, including a recovered
-/// malformed one, and returns its declared-name problem rather than a source type.
-/// The outer `<` is identifier punctuation only when joined to the applied name;
-/// otherwise it is unexpected syntax. Bare source type names do not match.
-pub(crate) fn applied_source_type_parser<'tokens, 'src: 'tokens>()
+/// Consumes a complete outer source-type shape carrying a declared-name mark—an
+/// application or a type followed by `[]`—and returns its contextual problem.
+/// A joined opener is identifier punctuation; a separated opener is unexpected
+/// syntax. An unmarked bare source type name does not match.
+pub(crate) fn marked_source_type_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, GrammarProblem, ParserExtra> {
     source_type_parser().try_map(|source_type, span| {
         source_type
@@ -434,30 +491,15 @@ fn finish_union(
         .map(ParsedSourceType::into_result);
     let first_member = match members.next().expect("a union has at least two members") {
         Ok(member) => member,
-        Err(problem) => {
-            return ParsedSourceType {
-                outcome: Err(problem),
-                application: None,
-            };
-        }
+        Err(problem) => return ParsedSourceType::recovered(problem),
     };
     let second_member = match members.next().expect("a union has at least two members") {
         Ok(member) => member,
-        Err(problem) => {
-            return ParsedSourceType {
-                outcome: Err(problem),
-                application: None,
-            };
-        }
+        Err(problem) => return ParsedSourceType::recovered(problem),
     };
     let remaining_members = match members.collect::<Result<Vec<_>, _>>() {
         Ok(members) => members,
-        Err(problem) => {
-            return ParsedSourceType {
-                outcome: Err(problem),
-                application: None,
-            };
-        }
+        Err(problem) => return ParsedSourceType::recovered(problem),
     };
     ParsedSourceType::valid(SourceType::union(
         first_member,
@@ -465,6 +507,24 @@ fn finish_union(
         remaining_members,
         state.source_span(union_span),
     ))
+}
+
+/// Converts members in source order so the earliest recovered problem wins;
+/// successful members remain structurally unchanged.
+fn finish_tuple(
+    members: Vec<ParsedSourceType>,
+    tuple_span: SimpleSpan,
+    state: &ParserState,
+) -> ParsedSourceType {
+    let members = match members
+        .into_iter()
+        .map(ParsedSourceType::into_result)
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(members) => members,
+        Err(problem) => return ParsedSourceType::recovered(problem),
+    };
+    ParsedSourceType::valid(SourceType::tuple(members, state.source_span(tuple_span)))
 }
 
 /// Preserves an earlier recovered member problem over the later missing-member
@@ -484,6 +544,116 @@ fn finish_missing_union_member(
 
 fn missing_union_member(span: SimpleSpan) -> ParsedSourceType {
     ParsedSourceType::recovered(GrammarProblem::MissingUnionMember(span))
+}
+
+fn missing_tuple_member(span: SimpleSpan) -> ParsedSourceType {
+    ParsedSourceType::recovered(GrammarProblem::MissingTupleMember(span))
+}
+
+/// Preserves a problem recovered in the comma-separated prefix because it is
+/// earlier in source; otherwise the first adjacent member's full span identifies
+/// the missing separator.
+fn finish_missing_tuple_separator(
+    preceding: Vec<ParsedSourceType>,
+    adjacent_span: SimpleSpan,
+) -> ParsedSourceType {
+    match preceding
+        .into_iter()
+        .find_map(|member| member.into_result().err())
+    {
+        Some(problem) => ParsedSourceType::recovered(problem),
+        None => ParsedSourceType::recovered(GrammarProblem::MissingTupleSeparator(adjacent_span)),
+    }
+}
+
+fn empty_application_parser<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedSourceType, ParserExtra> {
+    ident()
+        .then(just(Token::LAngle).spanned())
+        .then(just(Token::RAngle).spanned())
+        .map(|((name, opening), closing)| {
+            finish_empty_application(&name, opening.span, closing.span)
+        })
+}
+
+fn source_type_name_parser<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedSourceType, ParserExtra> {
+    ident().map_with(|name, context| {
+        ParsedSourceType::valid(SourceType::name(
+            name.inner,
+            context.state().0.source_span(name.span),
+        ))
+    })
+}
+
+fn postfix_array_parser<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<PostfixArraySyntax>, ParserExtra> {
+    just(Token::LBracket)
+        .spanned()
+        .then(just(Token::RBracket))
+        .map_with(
+            |(opening, _): (Spanned<Token<'src>>, Token<'src>), context| PostfixArraySyntax {
+                opening: opening.span,
+                brackets: context.span(),
+            },
+        )
+        .or_not()
+}
+
+fn tuple_parser<'tokens, 'src: 'tokens, P>(
+    source_type: P,
+) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedSourceType, ParserExtra>
+where
+    P: Parser<'tokens, TokenInput<'tokens, 'src>, ParsedSourceType, ParserExtra> + Clone + 'tokens,
+{
+    // Consume `, member` before accepting a lone comma so a recoverable member is
+    // not stranded. The optional comma runs after separated members, preserving
+    // exactly one trailing comma as valid syntax.
+    let leading_missing_member = just(Token::Comma)
+        .spanned()
+        .then_ignore(source_type.clone())
+        .map(|comma| missing_tuple_member(comma.span));
+    let lone_missing_member = just(Token::Comma)
+        .spanned()
+        .map(|comma: Spanned<Token<'src>>| missing_tuple_member(comma.span));
+    let member = choice((
+        leading_missing_member,
+        lone_missing_member,
+        source_type.clone(),
+    ))
+    .boxed();
+    let separated_member = just(Token::Comma).ignore_then(member.clone());
+    // Try this before the normal tuple shape to locate the first recursive member
+    // without a comma. The tail is consumed only to reach `]`; the first adjacent
+    // member remains the precise problem even if more tuple syntax follows it.
+    let missing_separator = member
+        .clone()
+        .then(separated_member.clone().repeated().collect::<Vec<_>>())
+        .then(source_type.clone().map_with(|_, context| context.span()))
+        .then(
+            choice((separated_member.clone(), member.clone()))
+                .repeated()
+                .collect::<Vec<_>>(),
+        )
+        .then_ignore(just(Token::Comma).or_not())
+        .delimited_by(just(Token::LBracket), just(Token::RBracket))
+        .map(|(((first, separated), adjacent_span), _)| {
+            finish_missing_tuple_separator(
+                std::iter::once(first).chain(separated).collect(),
+                adjacent_span,
+            )
+        });
+    let members = member
+        .clone()
+        .then(separated_member.repeated().collect::<Vec<_>>())
+        .then_ignore(just(Token::Comma).or_not())
+        .map(|(first, rest)| std::iter::once(first).chain(rest).collect::<Vec<_>>())
+        .or_not()
+        .map(Option::unwrap_or_default);
+    let tuple = members
+        .delimited_by(just(Token::LBracket), just(Token::RBracket))
+        .map_with(|members, context| finish_tuple(members, context.span(), &context.state().0));
+    choice((missing_separator, tuple))
 }
 
 pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
@@ -531,35 +701,30 @@ pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
                 )
             });
 
-        let empty_application = ident()
-            .then(just(Token::LAngle).spanned())
-            .then(just(Token::RAngle).spanned())
-            .map(|((name, opening), closing)| {
-                finish_empty_application(&name, opening.span, closing.span)
-            });
+        let empty_application = empty_application_parser();
+        let name = source_type_name_parser();
 
-        let name = ident().map_with(|name, context| {
-            ParsedSourceType::valid(SourceType::name(
-                name.inner,
-                context.state().0.source_span(name.span),
-            ))
-        });
+        let tuple = tuple_parser(source_type.clone());
 
-        // All forms begin with a name. Try recovered applications and the
-        // non-empty application shape before the bare form so their angle tokens are
-        // consumed rather than left behind as an unrelated parser failure.
+        // Application shapes and a bare name share their first token. Keep the
+        // application alternatives before the name so angle syntax is consumed
+        // rather than left behind as an unrelated parser failure.
         let primary = choice((
             empty_application,
             trailing_comma_application,
             application,
+            tuple,
             name,
         ));
 
         let member = primary
             .then(just(Token::Question).spanned().or_not())
-            // `with_postfix` preserves an earlier malformed primary and its
-            // application mark instead of letting a later `?` mask either fact.
+            // Each postfix recovery replaces only a valid outcome: `?` preserves
+            // an earlier malformed primary and its application mark, and a later
+            // `[]` cannot mask either that problem or the `?` problem.
             .map(|(source_type, question)| source_type.with_postfix(question))
+            .then(postfix_array_parser())
+            .map(|(source_type, brackets)| source_type.with_postfix_array(brackets))
             .boxed();
 
         let leading_missing_member = just(Token::Pipe)
@@ -599,7 +764,7 @@ pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
                 finish_union(first, rest, context.span(), &context.state().0)
             });
 
-        // Applications and postfix recovery finish before lower-precedence `|`.
+        // Primary forms and postfix recovery finish before lower-precedence `|`.
         // Trailing recovery and complete unions precede a single member so pipe
         // syntax is consumed and classified precisely.
         choice((trailing_union, union, union_member)).boxed()

@@ -2,7 +2,7 @@ use aureline_ast::{TableFieldBuilder, ast::SourceType, source::SourceSpan, token
 use chumsky::prelude::*;
 
 use crate::grammar::{
-    GrammarProblem, ParserExtra, TokenInput, applied_source_type_parser, ident, integer,
+    GrammarProblem, ParserExtra, TokenInput, ident, integer, marked_source_type_parser,
     punctuated_identifier, schema_type_parser, source_type_parser,
 };
 
@@ -56,7 +56,11 @@ fn field_parser<'tokens, 'src: 'tokens>()
                 }),
                 Err(problem) => FieldOutcome::Problem(problem),
             }
-        });
+        })
+        .boxed();
+    let recovered_field = field
+        .clone()
+        .filter(|field| matches!(field, FieldOutcome::Problem(_)));
 
     // Pure digits are Integer tokens for type arguments; recover them before
     // normal field parsing when they occupy the declared-name slot.
@@ -64,9 +68,9 @@ fn field_parser<'tokens, 'src: 'tokens>()
         FieldOutcome::Problem(GrammarProblem::IdentifierStartsWithDigit(name.span))
     });
 
-    // Consume the complete recursive application before the general compound
+    // Consume a complete marked source-type shape before general compound
     // recovery can absorb the following field type as another name suffix.
-    let applied_name = applied_source_type_parser()
+    let marked_name = marked_source_type_parser()
         .then(source_type_parser())
         .map(|(problem, _)| FieldOutcome::Problem(problem));
 
@@ -74,12 +78,14 @@ fn field_parser<'tokens, 'src: 'tokens>()
         .then(source_type_parser())
         .map(|(name, _)| FieldOutcome::Problem(name.into_problem()));
 
-    // Try the three-word form first so one physical `split name type` field can
-    // retain its identifier-specific whitespace problem.
+    // Preserve a structured source-type problem before compound-name recovery;
+    // valid partial fields still fall through so `split name type` retains its
+    // identifier-specific whitespace problem.
     choice((
+        recovered_field,
         split_name,
         integer_name,
-        applied_name,
+        marked_name,
         punctuated_name,
         field,
     ))
@@ -144,10 +150,10 @@ pub(crate) fn table_parser<'tokens, 'src: 'tokens>()
         .then(table_body_parser())
         .map(|((name, _), _)| Some(GrammarProblem::IdentifierStartsWithDigit(name.span)));
 
-    // As in field recovery, consume the complete recursive application before
+    // As in field recovery, consume the complete marked source-type shape before
     // the general compound branch can absorb the following schema mode.
-    let applied_name = just(Token::Table)
-        .ignore_then(applied_source_type_parser())
+    let marked_name = just(Token::Table)
+        .ignore_then(marked_source_type_parser())
         .then(schema_type_parser())
         .then(table_body_parser())
         .map(|((problem, _), _)| Some(problem));
@@ -208,7 +214,7 @@ pub(crate) fn table_parser<'tokens, 'src: 'tokens>()
 
     choice((
         integer_name,
-        applied_name,
+        marked_name,
         punctuated_name,
         missing_schema_type,
         table,
