@@ -2,7 +2,7 @@ use aureline_ast::{
     ast::{CommentKind, SourceType},
     source::{SourceId, SourceSpan, TextRange, TextSize},
 };
-use aureline_parser::SyntaxProblem;
+use aureline_parser::{IdentifierProblem, SyntaxProblem};
 use aureline_test::aurl_test;
 
 #[test]
@@ -128,17 +128,17 @@ fn comment_kinds_and_multibyte_locations_are_retained() {
 }
 
 #[test]
-fn multibyte_table_text_has_precise_utf8_byte_spans() {
+fn multibyte_prefix_preserves_precise_table_byte_spans() {
     let source_id = SourceId::new(9);
-    let ast = aureline_parser::parse_with_source(source_id, "table Café schemafull {}")
-        .expect("table parses");
+    let ast = aureline_parser::parse_with_source(source_id, "// é\ntable Cafe schemafull {}")
+        .expect("a multibyte comment before an ASCII table parses");
     let table = ast
         .table(ast.root().tables()[0])
         .expect("table item is allocated");
 
-    assert_eq!(table.span(), span(source_id, 0, 25));
-    assert_eq!(table.name_span(), span(source_id, 6, 11));
-    assert_eq!(table.schema_type_span(), span(source_id, 12, 22));
+    assert_eq!(table.span(), span(source_id, 6, 30));
+    assert_eq!(table.name_span(), span(source_id, 12, 16));
+    assert_eq!(table.schema_type_span(), span(source_id, 17, 27));
 }
 
 #[test]
@@ -207,6 +207,251 @@ fn unsupported_field_separators_are_typed_syntax_problems() {
             [SyntaxProblem::InvalidToken { .. }]
         ));
     }
+}
+
+#[test]
+fn identifier_cannot_start_with_a_digit() {
+    let errors = aureline_parser::parse("table 1User schemafull {}")
+        .expect_err("an identifier cannot start with a digit");
+
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::StartsWithDigit,
+            span: span(SourceId::new(0), 6, 7),
+        }]
+    );
+}
+
+#[test]
+fn identifier_cannot_contain_a_non_ascii_character() {
+    let errors = aureline_parser::parse("table Café schemafull {}")
+        .expect_err("an identifier cannot contain a non-ASCII character");
+
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsNonAscii('é'),
+            span: span(SourceId::new(0), 9, 11),
+        }]
+    );
+}
+
+#[test]
+fn identifier_punctuation_reports_its_specific_boundary() {
+    for (source, problem) in [
+        (
+            "table User.Name schemafull {}",
+            IdentifierProblem::ContainsDot,
+        ),
+        (
+            "table User-Name schemafull {}",
+            IdentifierProblem::ContainsHyphen,
+        ),
+        (
+            "table User@Name schemafull {}",
+            IdentifierProblem::ContainsPunctuation('@'),
+        ),
+    ] {
+        let errors = aureline_parser::parse(source)
+            .expect_err("an identifier cannot contain ASCII punctuation");
+
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::InvalidIdentifier {
+                problem,
+                span: span(SourceId::new(0), 10, 11),
+            }]
+        );
+    }
+}
+
+#[test]
+fn backtick_escaped_identifier_is_reserved() {
+    let errors = aureline_parser::parse("table `User` schemafull {}")
+        .expect_err("backtick-escaped identifiers are reserved");
+
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::BackticksReserved,
+            span: span(SourceId::new(0), 6, 12),
+        }]
+    );
+}
+
+#[test]
+fn table_identifier_cannot_contain_whitespace() {
+    let errors = aureline_parser::parse("table User Profile schemafull {}")
+        .expect_err("a table identifier cannot contain whitespace");
+
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsWhitespace,
+            span: span(SourceId::new(0), 10, 11),
+        }]
+    );
+}
+
+#[test]
+fn field_identifier_cannot_contain_whitespace() {
+    let errors = aureline_parser::parse("table User schemafull { first name string }")
+        .expect_err("a field identifier cannot contain whitespace");
+
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsWhitespace,
+            span: span(SourceId::new(0), 29, 30),
+        }]
+    );
+}
+
+#[test]
+fn ascii_identifier_boundary_and_declared_spelling_are_preserved() {
+    aurl_test!(
+        "table _A2 schemafull {\n\
+           a_1 string\n\
+           Z9 record\n\
+         }\n\
+         table string schemafull {\n\
+           record string\n\
+           Table Schemafull\n\
+         }"
+    )
+    .parses_as(
+        "(SourceFile
+            (Table _A2 Schemafull
+                (Field a_1 (Name string))
+                (Field Z9 (Name record)))
+            (Table string Schemafull
+                (Field record (Name string))
+                (Field Table (Name Schemafull))))",
+    );
+}
+
+#[test]
+fn only_structural_words_are_reserved_as_names() {
+    for keyword in ["table", "schemafull", "schemaless"] {
+        let table_source = format!("table {keyword} schemafull {{}}");
+        let table_errors = aureline_parser::parse(&table_source)
+            .expect_err("a structural word cannot be a table name");
+        assert!(matches!(
+            table_errors.as_slice(),
+            [SyntaxProblem::UnexpectedToken { .. }]
+        ));
+
+        let field_source = format!("table User schemafull {{ {keyword} string }}");
+        let field_errors = aureline_parser::parse(&field_source)
+            .expect_err("a structural word cannot be a field name");
+        assert!(matches!(
+            field_errors.as_slice(),
+            [SyntaxProblem::UnexpectedToken { .. }]
+        ));
+    }
+}
+
+#[test]
+fn field_names_share_the_identifier_boundary() {
+    for (source, problem, start, end) in [
+        (
+            "table User schemafull { 1name string }",
+            IdentifierProblem::StartsWithDigit,
+            24,
+            25,
+        ),
+        (
+            "table User schemafull { na.me string }",
+            IdentifierProblem::ContainsDot,
+            26,
+            27,
+        ),
+        (
+            "table User schemafull { na-me string }",
+            IdentifierProblem::ContainsHyphen,
+            26,
+            27,
+        ),
+        (
+            "table User schemafull { na@me string }",
+            IdentifierProblem::ContainsPunctuation('@'),
+            26,
+            27,
+        ),
+        (
+            "table User schemafull { naéme string }",
+            IdentifierProblem::ContainsNonAscii('é'),
+            26,
+            28,
+        ),
+        (
+            "table User schemafull { `name` string }",
+            IdentifierProblem::BackticksReserved,
+            24,
+            30,
+        ),
+    ] {
+        let errors = aureline_parser::parse(source)
+            .expect_err("a field name must obey the identifier boundary");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::InvalidIdentifier {
+                problem,
+                span: span(SourceId::new(0), start, end),
+            }]
+        );
+    }
+}
+
+#[test]
+fn compound_identifier_violations_report_the_first_offending_bytes() {
+    for (source, problem, start, end) in [
+        (
+            "table User::Name schemafull {}",
+            IdentifierProblem::ContainsPunctuation(':'),
+            10,
+            11,
+        ),
+        (
+            "table User-é schemafull {}",
+            IdentifierProblem::ContainsHyphen,
+            10,
+            11,
+        ),
+        (
+            "table Useré-Name schemafull {}",
+            IdentifierProblem::ContainsNonAscii('é'),
+            10,
+            12,
+        ),
+    ] {
+        let errors = aureline_parser::parse(source)
+            .expect_err("the first identifier-boundary violation must be reported");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::InvalidIdentifier {
+                problem,
+                span: span(SourceId::new(0), start, end),
+            }]
+        );
+    }
+}
+
+#[test]
+fn slash_inside_an_identifier_is_punctuation_not_a_comment() {
+    let errors = aureline_parser::parse("table User/Name schemafull {}")
+        .expect_err("a slash inside an identifier is punctuation");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem: IdentifierProblem::ContainsPunctuation('/'),
+            span: span(SourceId::new(0), 10, 11),
+        }]
+    );
+
+    aurl_test!("table User/* still a comment */schemafull {}")
+        .parses_as("(SourceFile (Table User Schemafull))");
 }
 
 fn span(source: SourceId, start: u32, end: u32) -> SourceSpan {

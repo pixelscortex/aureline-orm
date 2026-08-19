@@ -2,7 +2,7 @@ mod table;
 
 use aureline_ast::{
     AstBuilder,
-    ast::{Ast, Comment, SchemaType, SourceType},
+    ast::{Ast, Comment, SchemaType},
     source::{SourceId, SourceSpan},
     tokens::Token,
 };
@@ -19,28 +19,60 @@ use crate::lexer::TokenOccurrence;
 pub(crate) type TokenInput<'tokens, 'src> =
     MappedInput<'tokens, Token<'src>, SimpleSpan, &'tokens [TokenOccurrence<'src>]>;
 
+/// A malformed form consumed during the construction walk so parsing can
+/// select the earliest precise problem and then discard any partially built AST.
+#[derive(Clone, Copy)]
+pub(crate) enum GrammarProblem {
+    IdentifierWhitespace(SimpleSpan),
+    Unexpected(SimpleSpan),
+}
+
+impl GrammarProblem {
+    pub(crate) const fn span(self) -> SimpleSpan {
+        match self {
+            Self::IdentifierWhitespace(span) | Self::Unexpected(span) => span,
+        }
+    }
+}
+
+pub(crate) enum ParseTokensError {
+    Parser(Vec<Cheap<SimpleSpan>>),
+    Problem(GrammarProblem),
+}
+
 pub(crate) struct ParserState {
     ast: AstBuilder,
     source: SourceId,
+    inline_whitespace: Vec<SimpleSpan>,
 }
 
 impl ParserState {
-    fn new(source: SourceId, comments: Vec<Comment>) -> Self {
+    fn new(source: SourceId, comments: Vec<Comment>, inline_whitespace: Vec<SimpleSpan>) -> Self {
         Self {
             ast: AstBuilder::new(comments),
             source,
+            inline_whitespace,
         }
     }
 
     pub(crate) fn source_span(&self, span: SimpleSpan) -> SourceSpan {
         super::source_span(self.source, span)
     }
+
+    pub(crate) fn inline_whitespace_between(
+        &self,
+        left: SimpleSpan,
+        right: SimpleSpan,
+    ) -> Option<SimpleSpan> {
+        let gap = SimpleSpan::from(left.end..right.start);
+        self.inline_whitespace.contains(&gap).then_some(gap)
+    }
 }
 
 pub(crate) type ParserExtra = extra::Full<Cheap<SimpleSpan>, extra::SimpleState<ParserState>, ()>;
 
 pub(crate) fn source_file_parser<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, TokenInput<'tokens, 'src>, (), ParserExtra> {
+-> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<GrammarProblem>, ParserExtra> {
     let newlines = just(Token::Newline).repeated();
 
     let items = table_parser()
@@ -49,28 +81,44 @@ pub(crate) fn source_file_parser<'tokens, 'src: 'tokens>()
         .collect::<Vec<_>>();
 
     // `ignored()` would put child parsers in Chumsky's check-only mode and skip
-    // the `map_with` calls that allocate the AST. Discard the emitted IDs only
+    // the `map_with` calls that allocate the AST. Inspect emitted problems only
     // after the single construction walk has run.
-    newlines.ignore_then(items).then_ignore(end()).map(drop)
+    newlines
+        .ignore_then(items)
+        .then_ignore(end())
+        .map(|problems| {
+            problems
+                .into_iter()
+                .flatten()
+                .min_by_key(|problem| problem.span().start)
+        })
 }
 
 /// Parses a token stream into an arena-backed AST.
 ///
 /// # Errors
 ///
-/// Returns parser errors when the token stream does not match the grammar.
+/// Returns [`ParseTokensError::Parser`] when the token stream cannot be consumed,
+/// or [`ParseTokensError::Problem`] when a consumed recovery form carries the
+/// earliest precise grammar problem.
 pub(crate) fn parse_tokens<'tokens, 'src: 'tokens>(
     tokens: &'tokens [TokenOccurrence<'src>],
     comments: Vec<Comment>,
+    inline_whitespace: Vec<SimpleSpan>,
     source: SourceId,
     source_len: usize,
-) -> Result<Ast, Vec<Cheap<SimpleSpan>>> {
-    let mut state = extra::SimpleState(ParserState::new(source, comments));
+) -> Result<Ast, ParseTokensError> {
+    let mut state = extra::SimpleState(ParserState::new(source, comments, inline_whitespace));
     let input = tokens.split_spanned(SimpleSpan::from(source_len..source_len));
 
-    source_file_parser()
+    let problem = source_file_parser()
         .parse_with_state(input, &mut state)
-        .into_result()?;
+        .into_result()
+        .map_err(ParseTokensError::Parser)?;
+
+    if let Some(problem) = problem {
+        return Err(ParseTokensError::Problem(problem));
+    }
 
     Ok(state.0.ast.finish())
 }
@@ -91,11 +139,4 @@ pub(crate) fn schema_type_parser<'tokens, 'src: 'tokens>()
         just(Token::Schemaless).to(SchemaType::Less),
     ))
     .spanned()
-}
-
-pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, TokenInput<'tokens, 'src>, SourceType, ParserExtra> {
-    ident().map_with(|name, context| {
-        SourceType::name(name.inner, context.state().0.source_span(name.span))
-    })
 }

@@ -10,6 +10,26 @@ use chumsky::{
 };
 use lexer::Lexeme;
 
+/// The violated part of Aureline's ASCII bare-identifier boundary,
+/// `[A-Za-z_][A-Za-z0-9_]*`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IdentifierProblem {
+    /// An identifier began with an ASCII digit.
+    StartsWithDigit,
+    /// An identifier contained a character outside ASCII.
+    ContainsNonAscii(char),
+    /// An identifier contained `.`.
+    ContainsDot,
+    /// An identifier contained `-`.
+    ContainsHyphen,
+    /// An identifier contained another ASCII punctuation character.
+    ContainsPunctuation(char),
+    /// An identifier contained inline whitespace.
+    ContainsWhitespace,
+    /// A name used backticks reserved for a future embedded-SurrealQL escape hatch.
+    BackticksReserved,
+}
+
 /// A typed problem produced before the parser can construct a complete syntax tree.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SyntaxProblem {
@@ -17,6 +37,12 @@ pub enum SyntaxProblem {
     SourceTooLarge { byte_len: usize },
     /// The lexer could not form a token; `span` covers the offending source bytes.
     InvalidToken { span: SourceSpan },
+    /// A name crossed Aureline's bare-identifier boundary; `span` covers the
+    /// bytes that violate the boundary.
+    InvalidIdentifier {
+        problem: IdentifierProblem,
+        span: SourceSpan,
+    },
     /// A block comment reached the end of input; `span` points at its opening delimiter.
     UnterminatedBlockComment { span: SourceSpan },
     /// The token stream did not match the grammar; `span` covers the unexpected
@@ -59,11 +85,19 @@ pub fn parse_with_source(source_id: SourceId, source: &str) -> Result<Ast, Vec<S
 
     let mut tokens = Vec::new();
     let mut comments = Vec::new();
+    let mut inline_whitespace = Vec::new();
     for Spanned { inner, span } in occurrences {
         match inner {
+            Lexeme::InvalidIdentifier(problem) => {
+                return Err(vec![SyntaxProblem::InvalidIdentifier {
+                    problem,
+                    span: source_span(source_id, span),
+                }]);
+            }
             Lexeme::Comment(kind) => {
                 comments.push(Comment::new(kind, source_span(source_id, span)));
             }
+            Lexeme::InlineWhitespace => inline_whitespace.push(span),
             Lexeme::UnterminatedBlockComment => {
                 let opening = SimpleSpan::from(span.start..span.start + 2);
                 return Err(vec![SyntaxProblem::UnterminatedBlockComment {
@@ -74,13 +108,33 @@ pub fn parse_with_source(source_id: SourceId, source: &str) -> Result<Ast, Vec<S
         }
     }
 
-    grammar::parse_tokens(&tokens, comments, source_id, source.len()).map_err(|errors| {
-        errors
+    grammar::parse_tokens(
+        &tokens,
+        comments,
+        inline_whitespace,
+        source_id,
+        source.len(),
+    )
+    .map_err(|error| match error {
+        grammar::ParseTokensError::Parser(errors) => errors
             .into_iter()
             .map(|error| SyntaxProblem::UnexpectedToken {
                 span: source_span(source_id, *error.span()),
             })
-            .collect()
+            .collect(),
+        grammar::ParseTokensError::Problem(problem) => {
+            let span = source_span(source_id, problem.span());
+            let problem = match problem {
+                grammar::GrammarProblem::IdentifierWhitespace(_) => {
+                    SyntaxProblem::InvalidIdentifier {
+                        problem: IdentifierProblem::ContainsWhitespace,
+                        span,
+                    }
+                }
+                grammar::GrammarProblem::Unexpected(_) => SyntaxProblem::UnexpectedToken { span },
+            };
+            vec![problem]
+        }
     })
 }
 

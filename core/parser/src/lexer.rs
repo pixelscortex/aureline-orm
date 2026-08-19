@@ -1,11 +1,17 @@
 use aureline_ast::{ast::CommentKind, tokens::Token};
 use chumsky::{error::Cheap, extra, prelude::*};
 
+use crate::IdentifierProblem;
+
 pub(crate) type TokenOccurrence<'src> = Spanned<Token<'src>>;
 pub(crate) type LexerOccurrence<'src> = Spanned<Lexeme<'src>>;
 
 pub(crate) enum Lexeme<'src> {
     Token(Token<'src>),
+    InvalidIdentifier(IdentifierProblem),
+    /// One complete space/tab run retained for grammar recovery, never emitted
+    /// into the grammatical token stream.
+    InlineWhitespace,
     Comment(CommentKind),
     UnterminatedBlockComment,
 }
@@ -14,14 +20,40 @@ pub(crate) enum Lexeme<'src> {
 pub(crate) fn lexer<'src>()
 -> impl Parser<'src, &'src str, Vec<LexerOccurrence<'src>>, extra::Err<Cheap<SimpleSpan>>> {
     let newline = text::newline();
-    let word = text::ident().map(|word: &'src str| match word {
-        "table" => Token::Table,
-        "schemafull" => Token::Schemafull,
-        "schemaless" => Token::Schemaless,
-        identifier => Token::Ident(identifier),
-    });
+    // Keep compound malformed names in one candidate, then classify the first
+    // offending character and its UTF-8 width in `identifier_problem`. Structural
+    // delimiters and backticks stay outside; `/` joins only when it does not open
+    // `//` or `/*`, preserving both punctuation problems and comment delimiters.
+    let identifier_atom = || any().filter(|character: &char| is_identifier_atom(*character));
+    let internal_punctuation = || {
+        choice((
+            any().filter(|character: &char| is_internal_identifier_punctuation(*character)),
+            just('/').and_is(choice((just("//"), just("/*"))).not()),
+        ))
+    };
+    let identifier_candidate = identifier_atom()
+        .then(
+            internal_punctuation()
+                .repeated()
+                .then(identifier_atom())
+                .repeated(),
+        )
+        .to_slice()
+        .map_with(|candidate: &'src str, context| {
+            vec![identifier_occurrence(candidate, context.span())]
+        });
 
     let punctuation = choice((just('{').to(Token::LBrace), just('}').to(Token::RBrace)));
+
+    let backtick_identifier = just('`')
+        .then(any().and_is(just('`').not()).repeated())
+        .then(just('`'))
+        .map_with(|_, context| {
+            vec![Spanned {
+                inner: Lexeme::InvalidIdentifier(IdentifierProblem::BackticksReserved),
+                span: context.span(),
+            }]
+        });
 
     let line_comment = just("//")
         .then(any().and_is(newline.not()).repeated())
@@ -54,7 +86,7 @@ pub(crate) fn lexer<'src>()
                 }]
             });
 
-    let syntax_token = choice((newline.to(Token::Newline), word, punctuation))
+    let syntax_token = choice((newline.to(Token::Newline), punctuation))
         .spanned()
         .map(|occurrence: TokenOccurrence<'src>| {
             vec![Spanned {
@@ -63,20 +95,80 @@ pub(crate) fn lexer<'src>()
             }]
         });
 
+    let inline_whitespace = one_of(" \t")
+        .repeated()
+        .at_least(1)
+        .map_with(|(), context| {
+            vec![Spanned {
+                inner: Lexeme::InlineWhitespace,
+                span: context.span(),
+            }]
+        });
+
     let occurrence = choice((
         line_comment,
         block_comment,
         unterminated_block_comment,
+        backtick_identifier,
+        identifier_candidate,
         syntax_token,
+        inline_whitespace,
     ));
 
     occurrence
-        // Ignore spaces and tabs around Token, but preserve newlines as real
-        // Token because the grammar uses them as statement/field boundaries.
-        .padded_by(text::inline_whitespace())
         .repeated()
         .collect::<Vec<_>>()
         .map(|groups| groups.into_iter().flatten().collect())
+}
+
+fn is_identifier_atom(character: char) -> bool {
+    character.is_ascii_alphanumeric()
+        || character == '_'
+        || (!character.is_ascii() && !character.is_whitespace())
+}
+
+fn is_internal_identifier_punctuation(character: char) -> bool {
+    character.is_ascii_punctuation() && !matches!(character, '_' | '`' | '{' | '}' | '/')
+}
+
+fn identifier_occurrence(candidate: &str, span: SimpleSpan) -> LexerOccurrence<'_> {
+    if let Some((problem, offset, byte_len)) = identifier_problem(candidate) {
+        return Spanned {
+            inner: Lexeme::InvalidIdentifier(problem),
+            span: SimpleSpan::from(span.start + offset..span.start + offset + byte_len),
+        };
+    }
+
+    let token = match candidate {
+        "table" => Token::Table,
+        "schemafull" => Token::Schemafull,
+        "schemaless" => Token::Schemaless,
+        identifier => Token::Ident(identifier),
+    };
+    Spanned {
+        inner: Lexeme::Token(token),
+        span,
+    }
+}
+
+fn identifier_problem(candidate: &str) -> Option<(IdentifierProblem, usize, usize)> {
+    candidate.char_indices().find_map(|(offset, character)| {
+        let problem = if offset == 0 && character.is_ascii_digit() {
+            IdentifierProblem::StartsWithDigit
+        } else if !character.is_ascii() {
+            IdentifierProblem::ContainsNonAscii(character)
+        } else {
+            match character {
+                '.' => IdentifierProblem::ContainsDot,
+                '-' => IdentifierProblem::ContainsHyphen,
+                punctuation if punctuation.is_ascii_punctuation() && punctuation != '_' => {
+                    IdentifierProblem::ContainsPunctuation(punctuation)
+                }
+                _ => return None,
+            }
+        };
+        Some((problem, offset, character.len_utf8()))
+    })
 }
 
 fn block_comment_occurrences<'src>(
