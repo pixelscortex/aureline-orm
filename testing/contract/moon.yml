@@ -1,0 +1,38 @@
+id: aureline-test
+language: rust
+
+tags:
+  - rust
+  - test
+  - contract
+
+dependsOn:
+  - aureline-parser
+
+tasks:
+  build:
+    command: "cargo build -p aureline-test"
+    deps:
+      - "aureline-parser:build"
+    inputs: &rust_inputs
+      - "src/**/*.rs"
+      - "tests/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+  check:
+    command: "cargo check -p aureline-test"
+    deps:
+      - "aureline-parser:check"
+    inputs: *rust_inputs
+  test:
+    command: "cargo test -p aureline-test"
+    deps:
+      - "aureline-parser:test"
+    inputs: *rust_inputs
+  format:
+    command: "cargo fmt --package aureline-test --check"
+    inputs:
+      - "src/**/*.rs"
+      - "tests/**/*.rs"
+      - "Cargo.toml"

@@ -1,20 +1,19 @@
 [package]
-name = "aureline-parser"
+name = "aureline-test"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Aureline parser entrypoints."
+description = "Private Aureline contract-test harness."
 license.workspace = true
+publish = false
 
 [lib]
 path = "src/lib.rs"
 
-[features]
-unstable-test-normalization = ["aureline-ast/unstable-test-normalization"]
-
 [dependencies]
-aureline-ast = { path = "../ast" }
+aureline-parser = { path = "../../core/parser", features = ["unstable-test-normalization"] }
 chumsky = "0.13.0"
+serde = "1"
 
 [lints]
 workspace = true
