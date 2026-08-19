@@ -1,0 +1,4 @@
+interface:
+  display_name: "Comments Guidelines"
+  short_description: "Curate comments as local design records"
+  default_prompt: "Use $comments-guidelines to review comments affected by this code change."

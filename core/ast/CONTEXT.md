@@ -9,7 +9,7 @@ A source document containing declarations that together define a schema and its 
 _Avoid_: ORM configuration, runtime schema
 
 **Table**:
-A named record collection with a declared schema mode and fields.
+A named record collection with a declared schema mode and fields. Its declared name is its exact, case-sensitive database identity; Aureline prescribes no casing style.
 _Avoid_: Model, entity
 
 **Relation Table**:
@@ -17,7 +17,7 @@ A table whose records connect declared source and destination record kinds.
 _Avoid_: Join table, relationship model
 
 **Field**:
-A named value declared on a table, including its source type and field contract.
+A named value declared on a table, including its source type and field contract. Its declared name is case-sensitive, and Aureline prescribes no casing style.
 _Avoid_: Property, column
 
 **Function**:
