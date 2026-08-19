@@ -1,0 +1,57 @@
+testing/contract/tests/parser.rs
+  s_901a931cc21033::t_75bd73b39ab704 78-80,90-92
+  s_901a931cc21033::t_87e323bfc45912 13,96,111-131
+  s_901a931cc21033::t_f454893654ba1b 2,64-77,81-89,93-95
+  s_901a931cc21033::t_702a5d85b0c307 36-49
+  s_901a931cc21033::t_6e07d151ab2081 55-56
+  s_901a931cc21033::t_2263f5bc5b6ef9 14-29
+  s_901a931cc21033::t_59c2afe27512cf 30-35
+  s_901a931cc21033::t_c6b4591aaed2a1 97
+core/ast/src/ast.rs
+  s_901a931cc21033::t_324d5bc6893862 86-87,147-148,154-157,200-203,224
+  s_901a931cc21033::t_a0839d71da13d6 88,158
+  s_901a931cc21033::t_e04dff4111eb23 1-5,13-14,18-27,36-42,50,56,60-61,77,94,102,130-146,149-153,159-199,204-223,225-250
+  s_901a931cc21033::t_bed0cd32de0990 55
+core/ast/src/lib.rs
+  s_901a931cc21033::t_a0839d71da13d6 8
+core/ast/src/builder.rs
+  s_901a931cc21033::t_bed0cd32de0990 11,20,44,59-61,65-66
+  s_901a931cc21033::t_a0839d71da13d6 2-3,5,24-27,30-38,40-41,43,45-58,71-75,78-79,83-101,105-107
+  s_901a931cc21033::t_e04dff4111eb23 4,9-10,18-19,67,102-103
+  s_901a931cc21033::t_324d5bc6893862 28-29,80-82
+core/parser/src/grammar/mod.rs
+  s_901a931cc21033::t_d9cdba0468a0a3 54
+  s_901a931cc21033::t_bed0cd32de0990 5,43,70,74
+  s_901a931cc21033::t_b1cd669e25db16 94-99
+  s_901a931cc21033::t_5dcccc1b1564f0 51-53
+  s_901a931cc21033::t_6881f4c138e4a6 100
+core/ast/src/ids.rs
+  s_901a931cc21033::t_e04dff4111eb23 53-56,60
+  s_901a931cc21033::t_324d5bc6893862 4-5,27-28,50-52,57-59
+core/ast/src/arena.rs
+  s_901a931cc21033::t_a0839d71da13d6 38-44
+  s_901a931cc21033::t_e04dff4111eb23 45-47
+core/parser/src/grammar/table.rs
+  s_901a931cc21033::t_b1cd669e25db16 1,3,8-15,18-25,27-28,30-35,38,41-46,52-53
+  s_901a931cc21033::t_75bd73b39ab704 6
+  s_901a931cc21033::t_a0839d71da13d6 16,56-60,62,64-70
+  s_901a931cc21033::t_be02e9ae6e0bde 26,29
+  s_901a931cc21033::t_bacdb8701c3ca0 2,17
+  s_901a931cc21033::t_9e2fe4c4628b4d 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "830abd70790f1d82734667eb2c09fa9891c31fc2",
+  "prompts": {},
+  "sessions": {
+    "s_901a931cc21033": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01a97-9d85-70b1-9394-c58091ae80ca",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
