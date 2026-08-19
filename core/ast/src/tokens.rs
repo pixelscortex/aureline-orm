@@ -13,5 +13,6 @@ pub enum Token<'src> {
     RAngle,
     Comma,
     Question,
+    Pipe,
     Integer(&'src str),
 }

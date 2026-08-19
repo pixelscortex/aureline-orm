@@ -29,6 +29,7 @@ pub(crate) enum GrammarProblem {
     EmptyTypeArguments(SimpleSpan),
     TrailingTypeArgumentComma(SimpleSpan),
     PostfixOptionalType(SimpleSpan),
+    MissingUnionMember(SimpleSpan),
     Unexpected(SimpleSpan),
 }
 
@@ -41,6 +42,7 @@ impl GrammarProblem {
             | Self::EmptyTypeArguments(span)
             | Self::TrailingTypeArgumentComma(span)
             | Self::PostfixOptionalType(span)
+            | Self::MissingUnionMember(span)
             | Self::Unexpected(span) => span,
         }
     }
@@ -79,6 +81,13 @@ impl ParsedSourceType {
     fn valid(source_type: SourceType) -> Self {
         Self {
             outcome: Ok(source_type),
+            application: None,
+        }
+    }
+
+    fn recovered(problem: GrammarProblem) -> Self {
+        Self {
+            outcome: Err(problem),
             application: None,
         }
     }
@@ -251,6 +260,7 @@ pub(crate) fn identifier_punctuation<'tokens, 'src: 'tokens>()
         just(Token::RAngle).to('>'),
         just(Token::Comma).to(','),
         just(Token::Question).to('?'),
+        just(Token::Pipe).to('|'),
     ))
     .spanned()
 }
@@ -376,6 +386,106 @@ fn finish_application(
     )
 }
 
+fn finish_trailing_application(
+    name: &Spanned<String>,
+    opening: SimpleSpan,
+    first_argument: ParsedTypeArgument,
+    remaining_arguments: Vec<ParsedTypeArgument>,
+    comma: SimpleSpan,
+    state: &ParserState,
+) -> ParsedSourceType {
+    let nested_problem = std::iter::once(first_argument)
+        .chain(remaining_arguments)
+        .find_map(|argument| argument.into_result(state).err());
+    // Preserve source-order reporting: an earlier malformed nested argument is
+    // more relevant than this application's later comma.
+    ParsedSourceType::application(
+        Err(nested_problem.unwrap_or(GrammarProblem::TrailingTypeArgumentComma(comma))),
+        name.span,
+        opening,
+    )
+}
+
+fn finish_empty_application(
+    name: &Spanned<String>,
+    opening: SimpleSpan,
+    closing: SimpleSpan,
+) -> ParsedSourceType {
+    ParsedSourceType::application(
+        Err(GrammarProblem::EmptyTypeArguments(SimpleSpan::from(
+            opening.start..closing.end,
+        ))),
+        name.span,
+        opening,
+    )
+}
+
+/// Converts members in source order so the earliest recovered problem wins.
+/// Successful members remain structurally unchanged—including nested unions—
+/// before construction of the outer union.
+fn finish_union(
+    first_member: ParsedSourceType,
+    remaining_members: Vec<ParsedSourceType>,
+    union_span: SimpleSpan,
+    state: &ParserState,
+) -> ParsedSourceType {
+    let mut members = std::iter::once(first_member)
+        .chain(remaining_members)
+        .map(ParsedSourceType::into_result);
+    let first_member = match members.next().expect("a union has at least two members") {
+        Ok(member) => member,
+        Err(problem) => {
+            return ParsedSourceType {
+                outcome: Err(problem),
+                application: None,
+            };
+        }
+    };
+    let second_member = match members.next().expect("a union has at least two members") {
+        Ok(member) => member,
+        Err(problem) => {
+            return ParsedSourceType {
+                outcome: Err(problem),
+                application: None,
+            };
+        }
+    };
+    let remaining_members = match members.collect::<Result<Vec<_>, _>>() {
+        Ok(members) => members,
+        Err(problem) => {
+            return ParsedSourceType {
+                outcome: Err(problem),
+                application: None,
+            };
+        }
+    };
+    ParsedSourceType::valid(SourceType::union(
+        first_member,
+        second_member,
+        remaining_members,
+        state.source_span(union_span),
+    ))
+}
+
+/// Preserves an earlier recovered member problem over the later missing-member
+/// pipe; the pipe is reported only when every consumed member is valid.
+fn finish_missing_union_member(
+    first_member: ParsedSourceType,
+    remaining_members: Vec<ParsedSourceType>,
+    missing: SimpleSpan,
+) -> ParsedSourceType {
+    let earlier_problem = std::iter::once(first_member)
+        .chain(remaining_members)
+        .find_map(|member| member.into_result().err());
+    ParsedSourceType::recovered(
+        earlier_problem.unwrap_or(GrammarProblem::MissingUnionMember(missing)),
+    )
+}
+
+fn missing_union_member(span: SimpleSpan) -> ParsedSourceType {
+    ParsedSourceType::recovered(GrammarProblem::MissingUnionMember(span))
+}
+
 pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedSourceType, ParserExtra> {
     recursive(|source_type| {
@@ -395,51 +505,37 @@ pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
             .then(just(Token::LAngle).spanned())
             .then(arguments.clone())
             .then_ignore(just(Token::RAngle))
-            .map_with(
-                |((name, opening), (first_argument, remaining_arguments)), context| {
-                    finish_application(
-                        name,
-                        opening.span,
-                        first_argument,
-                        remaining_arguments,
-                        context.span(),
-                        &context.state().0,
-                    )
-                },
-            );
+            .map_with(|((name, opening), (first, rest)), context| {
+                finish_application(
+                    name,
+                    opening.span,
+                    first,
+                    rest,
+                    context.span(),
+                    &context.state().0,
+                )
+            });
 
         let trailing_comma_application = ident()
             .then(just(Token::LAngle).spanned())
             .then(arguments.then(just(Token::Comma).spanned()))
             .then_ignore(just(Token::RAngle))
-            .map_with(
-                |((name, opening), ((first_argument, remaining_arguments), comma)), context| {
-                    let state = &context.state().0;
-                    let nested_problem = std::iter::once(first_argument)
-                        .chain(remaining_arguments)
-                        .find_map(|argument| argument.into_result(state).err());
-                    // Preserve source-order reporting: an earlier malformed nested
-                    // argument is more relevant than this application's later comma.
-                    ParsedSourceType::application(
-                        Err(nested_problem
-                            .unwrap_or(GrammarProblem::TrailingTypeArgumentComma(comma.span))),
-                        name.span,
-                        opening.span,
-                    )
-                },
-            );
+            .map_with(|((name, opening), ((first, rest), comma)), context| {
+                finish_trailing_application(
+                    &name,
+                    opening.span,
+                    first,
+                    rest,
+                    comma.span,
+                    &context.state().0,
+                )
+            });
 
         let empty_application = ident()
             .then(just(Token::LAngle).spanned())
             .then(just(Token::RAngle).spanned())
             .map(|((name, opening), closing)| {
-                ParsedSourceType::application(
-                    Err(GrammarProblem::EmptyTypeArguments(SimpleSpan::from(
-                        opening.span.start..closing.span.end,
-                    ))),
-                    name.span,
-                    opening.span,
-                )
+                finish_empty_application(&name, opening.span, closing.span)
             });
 
         let name = ident().map_with(|name, context| {
@@ -459,11 +555,53 @@ pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
             name,
         ));
 
-        primary
+        let member = primary
             .then(just(Token::Question).spanned().or_not())
             // `with_postfix` preserves an earlier malformed primary and its
             // application mark instead of letting a later `?` mask either fact.
             .map(|(source_type, question)| source_type.with_postfix(question))
-            .boxed()
+            .boxed();
+
+        let leading_missing_member = just(Token::Pipe)
+            .spanned()
+            .then_ignore(member.clone())
+            .map(|pipe| missing_union_member(pipe.span));
+        let lone_missing_member = just(Token::Pipe)
+            .spanned()
+            .map(|pipe: Spanned<Token<'src>>| missing_union_member(pipe.span));
+        // Claim `| member` before the lone-pipe fallback; reversing these would
+        // consume only `|` and strand the following member outside recovery.
+        let union_member =
+            choice((leading_missing_member, lone_missing_member, member.clone())).boxed();
+        let separated_members = union_member
+            .clone()
+            .then(
+                just(Token::Pipe)
+                    .ignore_then(union_member.clone())
+                    .repeated()
+                    .collect::<Vec<_>>(),
+            )
+            .boxed();
+        let trailing_union = separated_members
+            .clone()
+            .then(just(Token::Pipe).spanned())
+            .map(|((first, rest), pipe)| finish_missing_union_member(first, rest, pipe.span));
+        let union = union_member
+            .clone()
+            .then(
+                just(Token::Pipe)
+                    .ignore_then(union_member.clone())
+                    .repeated()
+                    .at_least(1)
+                    .collect::<Vec<_>>(),
+            )
+            .map_with(|(first, rest), context| {
+                finish_union(first, rest, context.span(), &context.state().0)
+            });
+
+        // Applications and postfix recovery finish before lower-precedence `|`.
+        // Trailing recovery and complete unions precede a single member so pipe
+        // syntax is consumed and classified precisely.
+        choice((trailing_union, union, union_member)).boxed()
     })
 }

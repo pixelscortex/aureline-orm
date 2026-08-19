@@ -95,6 +95,141 @@ fn type_applications_are_recursive_open_and_meaning_free() {
 }
 
 #[test]
+fn unions_preserve_member_order_without_resolving_names() {
+    aurl_test!("table Event schemafull { payload string | int | FutureType }").parses_as(
+        "(SourceFile
+            (Table Event Schemafull
+                (Field payload
+                    (Union
+                        (Name string)
+                        (Name int)
+                        (Name FutureType)))))",
+    );
+}
+
+#[test]
+fn unions_compose_recursively_without_flattening() {
+    aurl_test!(
+        "table Link schemafull {\n\
+           owner record<A | B>\n\
+           choice box<A | B> | C\n\
+         }"
+    )
+    .parses_as(
+        "(SourceFile
+            (Table Link Schemafull
+                (Field owner
+                    (Application
+                        (Name record)
+                        (Type
+                            (Union (Name A) (Name B)))))
+                (Field choice
+                    (Union
+                        (Application
+                            (Name box)
+                            (Type
+                                (Union (Name A) (Name B))))
+                        (Name C)))))",
+    );
+}
+
+#[test]
+fn nested_unions_and_their_members_retain_precise_spans() {
+    let source_id = SourceId::new(23);
+    let ast = aureline_parser::parse_with_source(
+        source_id,
+        "table T schemafull { value box<A | B> | C }",
+    )
+    .expect("nested unions should parse");
+    let table = ast
+        .table(ast.root().tables()[0])
+        .expect("the table ID belongs to this AST");
+    let field = ast
+        .field(table.fields()[0])
+        .expect("the field ID belongs to this AST");
+
+    let SourceType::Union(outer) = field.source_type() else {
+        panic!("the field source type is an outer union");
+    };
+    assert_eq!(outer.span(), span(source_id, 27, 41));
+    assert_eq!(outer.members().len(), 2);
+    assert_eq!(outer.members()[0].span(), span(source_id, 27, 37));
+    assert_eq!(outer.members()[1].span(), span(source_id, 40, 41));
+
+    let SourceType::Application(box_type) = &outer.members()[0] else {
+        panic!("the first outer member is an application");
+    };
+    let TypeArgument::Type(SourceType::Union(inner)) = &box_type.arguments()[0] else {
+        panic!("the application argument is an inner union");
+    };
+    assert_eq!(inner.span(), span(source_id, 31, 36));
+    assert_eq!(inner.members()[0].span(), span(source_id, 31, 32));
+    assert_eq!(inner.members()[1].span(), span(source_id, 35, 36));
+}
+
+#[test]
+fn a_union_pipe_without_a_member_is_a_typed_problem() {
+    for (source, start, end) in [
+        ("table T schemafull { value | string }", 27, 28),
+        ("table T schemafull { value string | }", 34, 35),
+        ("table T schemafull { value string | | int }", 36, 37),
+    ] {
+        let errors = aureline_parser::parse(source)
+            .expect_err("every union pipe must have a member on both sides");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::MissingUnionMember {
+                span: span(SourceId::new(0), start, end),
+            }]
+        );
+    }
+}
+
+#[test]
+fn union_whitespace_does_not_change_the_logical_contract() {
+    aurl_test!(
+        "table Choice schemafull {\n\
+           compact A|B\n\
+           asymmetric A |B\n\
+           tabs A\t|\tB\n\
+         }"
+    )
+    .parses_as(
+        "(SourceFile
+            (Table Choice Schemafull
+                (Field compact (Union (Name A) (Name B)))
+                (Field asymmetric (Union (Name A) (Name B)))
+                (Field tabs (Union (Name A) (Name B)))))",
+    );
+}
+
+#[test]
+fn missing_union_members_are_typed_inside_generic_arguments() {
+    for (source, last_pipe) in [
+        ("table T schemafull { value record<| A> }", false),
+        ("table T schemafull { value record<A |> }", false),
+        ("table T schemafull { value record<A | | B> }", true),
+        ("table T schemafull { value record<|> }", false),
+    ] {
+        let pipe = if last_pipe {
+            source.rfind('|')
+        } else {
+            source.find('|')
+        }
+        .expect("the malformed union contains a pipe");
+        let start = u32::try_from(pipe).expect("the short contract source fits text offsets");
+        let errors = aureline_parser::parse(source)
+            .expect_err("a generic argument cannot omit a union member");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::MissingUnionMember {
+                span: span(SourceId::new(0), start, start + 1),
+            }]
+        );
+    }
+}
+
+#[test]
 fn recursive_type_applications_retain_precise_spans_and_integer_spelling() {
     let source_id = SourceId::new(17);
     let ast = aureline_parser::parse_with_source(

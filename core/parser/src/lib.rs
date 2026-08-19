@@ -49,6 +49,8 @@ pub enum SyntaxProblem {
     TrailingTypeArgumentComma { span: SourceSpan },
     /// A type used postfix `?`; `span` covers `?`. Optional types use `option<T>`.
     PostfixOptionalType { span: SourceSpan },
+    /// A union pipe was missing a member on at least one side; `span` covers the offending `|`.
+    MissingUnionMember { span: SourceSpan },
     /// A block comment reached the end of input; `span` points at its opening delimiter.
     UnterminatedBlockComment { span: SourceSpan },
     /// The token stream did not match the grammar; `span` covers the unexpected
@@ -157,6 +159,9 @@ pub fn parse_with_source(source_id: SourceId, source: &str) -> Result<Ast, Vec<S
                 }
                 grammar::GrammarProblem::PostfixOptionalType(_) => {
                     SyntaxProblem::PostfixOptionalType { span }
+                }
+                grammar::GrammarProblem::MissingUnionMember(_) => {
+                    SyntaxProblem::MissingUnionMember { span }
                 }
                 grammar::GrammarProblem::Unexpected(_) => SyntaxProblem::UnexpectedToken { span },
             };

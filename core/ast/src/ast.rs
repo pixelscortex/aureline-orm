@@ -255,6 +255,7 @@ impl FieldDecl {
 pub enum SourceType {
     Name(TypeName),
     Application(TypeApplication),
+    Union(TypeUnion),
 }
 
 impl SourceType {
@@ -286,12 +287,68 @@ impl SourceType {
         ))
     }
 
+    /// Creates a union with at least two members in exact source order.
+    ///
+    /// Nested unions must remain nested; members must not be reordered,
+    /// deduplicated, or semantically resolved. `span` and every member span must share one
+    /// source, and each member span must be contained by `span`; this constructor
+    /// does not validate those provenance relationships.
+    #[must_use]
+    pub fn union(
+        first_member: SourceType,
+        second_member: SourceType,
+        remaining_members: Vec<SourceType>,
+        span: SourceSpan,
+    ) -> Self {
+        Self::Union(TypeUnion::new(
+            first_member,
+            second_member,
+            remaining_members,
+            span,
+        ))
+    }
+
     #[must_use]
     pub fn span(&self) -> SourceSpan {
         match self {
             Self::Name(name) => name.span(),
             Self::Application(application) => application.span(),
+            Self::Union(union) => union.span(),
         }
+    }
+}
+
+/// A meaning-free union of at least two source-ordered member types.
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+pub struct TypeUnion {
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    span: SourceSpan,
+    members: Vec<SourceType>,
+}
+
+impl TypeUnion {
+    fn new(
+        first_member: SourceType,
+        second_member: SourceType,
+        remaining_members: Vec<SourceType>,
+        span: SourceSpan,
+    ) -> Self {
+        let mut members = Vec::with_capacity(remaining_members.len() + 2);
+        members.push(first_member);
+        members.push(second_member);
+        members.extend(remaining_members);
+        Self { span, members }
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        self.span
+    }
+
+    #[must_use]
+    pub fn members(&self) -> &[SourceType] {
+        &self.members
     }
 }
 

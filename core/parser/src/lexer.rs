@@ -50,6 +50,7 @@ pub(crate) fn lexer<'src>()
         just('>').to(Token::RAngle),
         just(',').to(Token::Comma),
         just('?').to(Token::Question),
+        just('|').to(Token::Pipe),
     ));
 
     let backtick_identifier = just('`')
@@ -138,7 +139,7 @@ fn is_internal_identifier_punctuation(character: char) -> bool {
     character.is_ascii_punctuation()
         && !matches!(
             character,
-            '_' | '`' | '{' | '}' | '<' | '>' | ',' | '?' | '/'
+            '_' | '`' | '{' | '}' | '<' | '>' | ',' | '?' | '|' | '/'
         )
 }
 
