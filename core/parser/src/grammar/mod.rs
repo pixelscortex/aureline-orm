@@ -2,7 +2,7 @@ mod table;
 
 use aureline_ast::{
     AstBuilder,
-    ast::{Ast, SchemaType, SourceFile},
+    ast::{Ast, SchemaType, SourceType},
     source::{SourceId, SourceSpan},
     tokens::Token,
 };
@@ -40,7 +40,7 @@ impl ParserState {
 pub(crate) type ParserExtra = extra::Full<Cheap<SimpleSpan>, extra::SimpleState<ParserState>, ()>;
 
 pub(crate) fn source_file_parser<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, TokenInput<'tokens, 'src>, SourceFile, ParserExtra> {
+-> impl Parser<'tokens, TokenInput<'tokens, 'src>, (), ParserExtra> {
     let newlines = just(Token::Newline).repeated();
 
     let items = table_parser()
@@ -48,10 +48,10 @@ pub(crate) fn source_file_parser<'tokens, 'src: 'tokens>()
         .repeated()
         .collect::<Vec<_>>();
 
-    newlines
-        .ignore_then(items)
-        .then_ignore(end())
-        .map(SourceFile::new)
+    // `ignored()` would put child parsers in Chumsky's check-only mode and skip
+    // the `map_with` calls that allocate the AST. Discard the emitted IDs only
+    // after the single construction walk has run.
+    newlines.ignore_then(items).then_ignore(end()).map(drop)
 }
 
 /// Parses a token stream into an arena-backed AST.
@@ -67,11 +67,11 @@ pub(crate) fn parse_tokens<'tokens, 'src: 'tokens>(
     let mut state = extra::SimpleState(ParserState::new(source));
     let input = tokens.split_spanned(SimpleSpan::from(source_len..source_len));
 
-    let root = source_file_parser()
+    source_file_parser()
         .parse_with_state(input, &mut state)
         .into_result()?;
 
-    Ok(state.0.ast.finish(root))
+    Ok(state.0.ast.finish())
 }
 
 pub(crate) fn ident<'tokens, 'src: 'tokens>()
@@ -90,4 +90,11 @@ pub(crate) fn schema_type_parser<'tokens, 'src: 'tokens>()
         just(Token::Schemaless).to(SchemaType::Less),
     ))
     .spanned()
+}
+
+pub(crate) fn source_type_parser<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, TokenInput<'tokens, 'src>, SourceType, ParserExtra> {
+    ident().map_with(|name, context| {
+        SourceType::name(name.inner, context.state().0.source_span(name.span))
+    })
 }

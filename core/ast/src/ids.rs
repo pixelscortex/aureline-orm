@@ -1,7 +1,8 @@
 use crate::arena::ArenaId;
 
 macro_rules! define_arena_id {
-    ($vis:vis struct $name:ident;) => {
+    ($(#[$meta:meta])* $vis:vis struct $name:ident;) => {
+        $(#[$meta])*
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         $vis struct $name(u32);
 
@@ -23,6 +24,8 @@ macro_rules! define_arena_id {
             }
         }
 
+        // This feature-only encoding lets the contract normalizer resolve arena
+        // references. It is not a persistent or stable serialization format.
         #[cfg(feature = "unstable-test-normalization")]
         impl serde::Serialize for $name {
             fn serialize<SerializerType>(
@@ -44,5 +47,15 @@ macro_rules! define_arena_id {
 }
 
 define_arena_id!(
-    pub struct ItemId;
+    /// Compilation-local `u32` index of a table in one parsed AST.
+    ///
+    /// IDs from different ASTs must not be compared or used for cross-AST access.
+    pub struct TableId;
+);
+
+define_arena_id!(
+    /// Compilation-local `u32` index of a field in one parsed AST.
+    ///
+    /// IDs from different ASTs must not be compared or used for cross-AST access.
+    pub struct FieldId;
 );

@@ -5,4 +5,4 @@ pub mod ids;
 pub mod source;
 pub mod tokens;
 
-pub use builder::{AllocInAst, AstBuilder};
+pub use builder::{AstBuilder, TableFieldBuilder};

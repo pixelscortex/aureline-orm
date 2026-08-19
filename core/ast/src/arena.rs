@@ -35,6 +35,16 @@ where
         id
     }
 
+    pub(crate) fn alloc_with(&mut self, build: impl FnOnce(Id) -> T) -> Id {
+        let id = self.next_id();
+        self.values.push(build(id));
+        id
+    }
+
+    fn next_id(&self) -> Id {
+        Id::from_index(self.values.len())
+    }
+
     pub fn get(&self, id: Id) -> Option<&T> {
         self.values.get(id.into_index())
     }

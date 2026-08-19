@@ -1,4 +1,8 @@
-use crate::{arena::Arena, ids::ItemId, source::SourceSpan};
+use crate::{
+    arena::Arena,
+    ids::{FieldId, TableId},
+    source::SourceSpan,
+};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
@@ -6,12 +10,21 @@ use crate::{arena::Arena, ids::ItemId, source::SourceSpan};
 pub struct Ast {
     #[cfg_attr(feature = "unstable-test-normalization", serde(rename = "$root"))]
     root: SourceFile,
-    items: Arena<ItemId, Item>,
+    tables: Arena<TableId, TableDecl>,
+    fields: Arena<FieldId, FieldDecl>,
 }
 
 impl Ast {
-    pub(crate) fn new(root: SourceFile, items: Arena<ItemId, Item>) -> Self {
-        Self { root, items }
+    pub(crate) fn new(
+        root: SourceFile,
+        tables: Arena<TableId, TableDecl>,
+        fields: Arena<FieldId, FieldDecl>,
+    ) -> Self {
+        Self {
+            root,
+            tables,
+            fields,
+        }
     }
 
     #[must_use]
@@ -20,8 +33,13 @@ impl Ast {
     }
 
     #[must_use]
-    pub fn item(&self, id: ItemId) -> Option<&Item> {
-        self.items.get(id)
+    pub fn table(&self, id: TableId) -> Option<&TableDecl> {
+        self.tables.get(id)
+    }
+
+    #[must_use]
+    pub fn field(&self, id: FieldId) -> Option<&FieldDecl> {
+        self.fields.get(id)
     }
 }
 
@@ -29,26 +47,19 @@ impl Ast {
 #[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 #[cfg_attr(feature = "unstable-test-normalization", serde(rename = "SourceFile"))]
 pub struct SourceFile {
-    items: Vec<ItemId>,
+    tables: Vec<TableId>,
 }
 
 impl SourceFile {
     #[must_use]
-    pub fn new(items: Vec<ItemId>) -> Self {
-        Self { items }
+    pub(crate) fn new(tables: Vec<TableId>) -> Self {
+        Self { tables }
     }
 
     #[must_use]
-    pub fn items(&self) -> &[ItemId] {
-        &self.items
+    pub fn tables(&self) -> &[TableId] {
+        &self.tables
     }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
-pub enum Item {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Table"))]
-    Table(TableDecl),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -63,6 +74,7 @@ pub struct TableDecl {
     schema_type: SchemaType,
     #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     schema_type_span: SourceSpan,
+    fields: Vec<FieldId>,
 }
 
 impl TableDecl {
@@ -71,13 +83,15 @@ impl TableDecl {
     /// `name_span` and `schema_type_span` must use the same source as `span` and
     /// must be contained by it. This constructor does not validate that relationship;
     /// callers that violate it create a declaration whose reported provenance cannot
-    /// be trusted.
-    pub fn new(
+    /// be trusted. `fields` must list this table's fields in source order, and each
+    /// referenced field must carry this table's identity as its owner.
+    pub(crate) fn new(
         span: SourceSpan,
         name: impl Into<String>,
         name_span: SourceSpan,
         schema_type: SchemaType,
         schema_type_span: SourceSpan,
+        fields: Vec<FieldId>,
     ) -> Self {
         Self {
             span,
@@ -85,6 +99,7 @@ impl TableDecl {
             name_span,
             schema_type,
             schema_type_span,
+            fields,
         }
     }
 
@@ -111,6 +126,127 @@ impl TableDecl {
     #[must_use]
     pub fn schema_type_span(&self) -> SourceSpan {
         self.schema_type_span
+    }
+
+    #[must_use]
+    pub fn fields(&self) -> &[FieldId] {
+        &self.fields
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+#[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Field"))]
+pub struct FieldDecl {
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    span: SourceSpan,
+    name: String,
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    name_span: SourceSpan,
+    source_type: SourceType,
+    // Logical normalization follows the table-to-fields edge. Serializing this
+    // storage back-reference would make that traversal cyclic.
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    owner: TableId,
+}
+
+impl FieldDecl {
+    /// Creates a field with the table that owns it in the same parsed AST.
+    ///
+    /// The field name and source type spans must use the same source as `span`
+    /// and must be contained by it.
+    pub(crate) fn new(
+        span: SourceSpan,
+        name: impl Into<String>,
+        name_span: SourceSpan,
+        source_type: SourceType,
+        owner: TableId,
+    ) -> Self {
+        Self {
+            span,
+            name: name.into(),
+            name_span,
+            source_type,
+            owner,
+        }
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        self.span
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[must_use]
+    pub fn name_span(&self) -> SourceSpan {
+        self.name_span
+    }
+
+    #[must_use]
+    pub fn source_type(&self) -> &SourceType {
+        &self.source_type
+    }
+
+    #[must_use]
+    pub fn owner(&self) -> TableId {
+        self.owner
+    }
+}
+
+/// Meaning-free source type syntax preserved for later static resolution.
+///
+/// The parser records exact spelling and locations here without deciding which
+/// type names Aureline supports.
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+pub enum SourceType {
+    Name(TypeName),
+}
+
+impl SourceType {
+    #[must_use]
+    pub fn name(name: impl Into<String>, span: SourceSpan) -> Self {
+        Self::Name(TypeName::new(name, span))
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Name(name) => name.span(),
+        }
+    }
+}
+
+/// An exact, case-sensitive name reference and its source location.
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
+pub struct TypeName {
+    name: String,
+    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
+    span: SourceSpan,
+}
+
+impl TypeName {
+    #[must_use]
+    pub fn new(name: impl Into<String>, span: SourceSpan) -> Self {
+        Self {
+            name: name.into(),
+            span,
+        }
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[must_use]
+    pub fn span(&self) -> SourceSpan {
+        self.span
     }
 }
 
