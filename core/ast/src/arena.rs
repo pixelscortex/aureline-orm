@@ -1,6 +1,12 @@
 use std::marker::PhantomData;
 
+#[cfg(feature = "unstable-test-normalization")]
+use serde::{Serialize, Serializer, ser::SerializeStruct};
+
 pub trait ArenaId: Copy {
+    #[cfg(feature = "unstable-test-normalization")]
+    const KIND: &'static str;
+
     fn from_index(index: usize) -> Self;
     fn into_index(self) -> usize;
 }
@@ -40,5 +46,25 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(feature = "unstable-test-normalization")]
+impl<Id, T> Serialize for Arena<Id, T>
+where
+    Id: ArenaId,
+    T: Serialize,
+{
+    fn serialize<SerializerType>(
+        &self,
+        serializer: SerializerType,
+    ) -> Result<SerializerType::Ok, SerializerType::Error>
+    where
+        SerializerType: Serializer,
+    {
+        let mut arena = serializer.serialize_struct("$Arena", 2)?;
+        arena.serialize_field("kind", Id::KIND)?;
+        arena.serialize_field("values", &self.values)?;
+        arena.end()
     }
 }

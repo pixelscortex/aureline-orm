@@ -60,6 +60,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aureline-test"
+version = "0.0.0"
+dependencies = [
+ "aureline-parser",
+ "chumsky",
+ "serde",
+]
+
+[[package]]
 name = "aureline-wasm"
 version = "0.0.0"
 dependencies = [

@@ -8,7 +8,7 @@ Aureline is a greenfield ORM/tooling workspace for a write-once, connect-everywh
 .
 ├── .moon/
 │   ├── toolchain.yml      # moon/proto toolchain config: Node + pnpm + Rust
-│   └── workspace.yml      # moon project discovery for core/*, sdks/*, site, examples/*
+│   └── workspace.yml      # moon project discovery for Rust, SDK, site, and example projects
 ├── core/
 │   ├── ast/               # shared syntax tree and language data structures
 │   ├── parser/            # .aurl parser entrypoints
@@ -16,6 +16,8 @@ Aureline is a greenfield ORM/tooling workspace for a write-once, connect-everywh
 │   ├── migration/         # migration preview primitives
 │   ├── wasm/              # browser WASM wrapper over parser/checker APIs as needed
 │   └── cli/               # Rust CLI entrypoint
+├── testing/
+│   └── aureline-test/     # private Rust contract-test harness and suites
 ├── sdks/
 │   └── js/                # TypeScript SDK package; package: @aureline/js
 ├── site/                  # SvelteKit site for docs + playground, initialized with shadcn-svelte preset
