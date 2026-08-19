@@ -13,7 +13,7 @@ mod tests {
     use crate::sexpr::SExpr;
 
     #[test]
-    fn matcher_compares_parsed_structure_instead_of_formatting() {
+    fn matcher_ignores_s_expression_formatting() {
         let actual = SExpr::parse("(SourceFile (Table User Schemafull))").unwrap();
 
         assert_matches("(SourceFile\n  (Table User Schemafull)\n)", &actual);

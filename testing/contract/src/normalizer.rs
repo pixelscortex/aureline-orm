@@ -169,7 +169,9 @@ impl<'value> Resolver<'value> {
         let key = (kind, index);
 
         if self.resolving.contains(&key) {
-            return Ok(Vec::new());
+            return Err(format!(
+                "cyclic {kind} arena reference at index {index}; storage back-references must be excluded from logical serialization"
+            ));
         }
 
         let value = self

@@ -4,6 +4,7 @@ language: rust
 tags:
   - rust
   - test
+  - contract
 
 dependsOn:
   - aureline-parser

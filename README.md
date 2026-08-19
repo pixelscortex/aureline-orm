@@ -17,7 +17,7 @@ Aureline is a greenfield ORM/tooling workspace for a write-once, connect-everywh
 │   ├── wasm/              # browser WASM wrapper over parser/checker APIs as needed
 │   └── cli/               # Rust CLI entrypoint
 ├── testing/
-│   └── aureline-test/     # private Rust contract-test harness and suites
+│   └── contract/          # private Rust contract-test harness and suites
 ├── sdks/
 │   └── js/                # TypeScript SDK package; package: @aureline/js
 ├── site/                  # SvelteKit site for docs + playground, initialized with shadcn-svelte preset
@@ -29,6 +29,7 @@ Aureline is a greenfield ORM/tooling workspace for a write-once, connect-everywh
 ## Why this shape
 
 - `core/`: Rust-owned compiler system. Parser, semantic analysis, diagnostics, codegen, CLI, and WASM compiler wrapper belong here.
+- `testing/`: Non-published Rust contract infrastructure and suites. It depends on compiler crates; production crates never depend on it.
 - `sdks/`: publishable language SDK/runtime packages only. JavaScript, Python, Rust, Go, and future SDKs belong here.
 - `site/`: public website surface. Keep docs and playground together here unless they become operationally different products later.
 - `examples/`: future examples, fixtures, and tutorial projects. Moon and pnpm already reserve `examples/*`.
@@ -45,6 +46,7 @@ Naming rule: package/crate/project IDs use the `aureline-` prefix (or npm scope 
 - Rust migration package: `aureline-migration`
 - Rust WASM package: `aureline-wasm`
 - Rust CLI package: `aureline-cli`
+- Rust contract-test package: `aureline-test` (private)
 - JS SDK package: `@aureline/js`
 - SvelteKit site package: `@aureline/site`
 

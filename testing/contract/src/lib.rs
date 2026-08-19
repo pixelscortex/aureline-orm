@@ -3,6 +3,7 @@ mod matcher;
 mod normalizer;
 mod sexpr;
 
+/// Fluent entry point for an Aureline contract assertion.
 pub struct AurlTest {
     source: String,
 }

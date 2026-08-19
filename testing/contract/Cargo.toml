@@ -3,7 +3,7 @@ name = "aureline-test"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Private contract-test harness for Aureline compiler stages."
+description = "Private Aureline contract-test harness."
 license.workspace = true
 publish = false
 

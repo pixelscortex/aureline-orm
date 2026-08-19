@@ -61,7 +61,7 @@ mod tests {
     use crate::sexpr::SExpr;
 
     #[test]
-    fn mismatch_is_copyable_and_marks_the_changed_structure() {
+    fn mismatch_is_copyable_and_highlights_the_changed_structure() {
         let expected = SExpr::parse("(SourceFile (Table User Schemaless))").unwrap();
         let actual = SExpr::parse("(SourceFile (Table User Schemafull))").unwrap();
 
