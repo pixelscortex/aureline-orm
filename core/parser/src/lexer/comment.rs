@@ -22,18 +22,6 @@ use chumsky::prelude::*;
 
 use super::{Lexeme, LexerExtra, LexerOccurrence};
 
-/// Consumes `//` through the byte immediately before the next physical newline.
-///
-/// The newline is deliberately excluded, so the outer lexer emits it as a
-/// normal [`Token::Newline`]. For example:
-///
-/// ```text
-/// first string // explanation
-/// second int
-/// ```
-///
-/// produces a line-comment AST occurrence followed by the newline token that
-/// lets the grammar start `second int` as a new field.
 pub(super) fn line<'src>() -> impl Parser<'src, &'src str, Vec<LexerOccurrence<'src>>, LexerExtra> {
     just("//")
         .then(any().and_is(text::newline().not()).repeated())
@@ -45,12 +33,6 @@ pub(super) fn line<'src>() -> impl Parser<'src, &'src str, Vec<LexerOccurrence<'
         })
 }
 
-/// Consumes a closed `/* ... */` comment and records each newline inside it.
-///
-/// The first `*/` closes the comment; block comments are not nested. A
-/// single-line block comment returns only its comment occurrence. A multiline
-/// block comment also returns one [`Token::Newline`] occurrence per physical
-/// newline, allowing a comment to preserve rather than erase field separation.
 pub(super) fn block<'src>() -> impl Parser<'src, &'src str, Vec<LexerOccurrence<'src>>, LexerExtra>
 {
     just("/*")
@@ -66,17 +48,6 @@ pub(super) fn block<'src>() -> impl Parser<'src, &'src str, Vec<LexerOccurrence<
         .map_with(|newlines, context| block_occurrences(newlines, context.span()))
 }
 
-/// Consumes `/*` and the remaining input when no earlier `*/` can close it.
-///
-/// ```text
-/// table User schemafull {} /* still open
-///                          ^^ UnterminatedBlockComment
-/// ```
-///
-/// This alternative follows [`block`] in the outer lexer. Therefore it is a
-/// recovery form for a genuinely unfinished comment, not a competing parse of
-/// every valid block comment. The occurrence spans through EOF; [`super::lex`]
-/// narrows the public diagnostic to the opening `/*`.
 pub(super) fn unterminated_block<'src>()
 -> impl Parser<'src, &'src str, Vec<LexerOccurrence<'src>>, LexerExtra> {
     just("/*")
@@ -89,12 +60,6 @@ pub(super) fn unterminated_block<'src>()
         })
 }
 
-/// Expands one block comment into the separate output channels needed later.
-///
-/// The first occurrence covers the entire comment and becomes AST metadata.
-/// Every collected newline span becomes a grammatical [`Token::Newline`]. The
-/// ranges intentionally overlap the comment range: they describe two different
-/// facts about the same source bytes rather than two disjoint tokens.
 fn block_occurrences<'src>(
     newlines: Vec<Option<SimpleSpan>>,
     span: SimpleSpan,

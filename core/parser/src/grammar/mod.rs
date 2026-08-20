@@ -29,17 +29,6 @@ use crate::{SyntaxProblem, lexer::LexedSource};
 
 use self::{problem::ParseTokensError, state::ParserState};
 
-/// Parses a lexed source document into the arena-backed AST.
-///
-/// [`LexedSource::tokens`] become Chumsky's mapped input, preserving each
-/// token's byte span and installing an empty end-of-input span at `source_len`.
-/// Comments initialize the AST builder, while inline-whitespace spans initialize
-/// the contextual declared-name recovery state.
-///
-/// [`document::parser`] returns the earliest typed recovery problem found during
-/// its single construction walk. A normal parser failure takes the separate
-/// [`ParseTokensError::Parser`] path. In either error case the in-progress
-/// [`ParserState`] is dropped, so callers can never observe a partial AST.
 pub(crate) fn parse(lexed: LexedSource<'_>) -> Result<Ast, Vec<SyntaxProblem>> {
     let LexedSource {
         tokens,

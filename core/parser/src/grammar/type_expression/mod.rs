@@ -38,14 +38,6 @@ use chumsky::prelude::*;
 use super::state::{ParserExtra, TokenInput};
 pub(in crate::grammar) use parsed::ParsedTypeExpression;
 
-/// Parses one complete source type expression using the precedence documented
-/// at module level.
-///
-/// Application alternatives must precede the bare-name alternative because
-/// both begin with [`aureline_ast::tokens::Token::Ident`]. With the current
-/// order, `array<string>` is consumed as one application. If `name` ran first,
-/// it could accept only `array` and strand `<string>` for an unrelated outer
-/// parser error.
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra> {
     recursive(|type_expression| {

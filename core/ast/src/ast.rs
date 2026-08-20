@@ -5,16 +5,10 @@ use crate::{
 };
 
 #[derive(Debug)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
-#[cfg_attr(feature = "unstable-test-normalization", serde(rename = "$Ast"))]
 pub struct Ast {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(rename = "$root"))]
     root: SourceFile,
     tables: Arena<TableId, TableDecl>,
     fields: Arena<FieldId, FieldDecl>,
-    // Comments remain available through `Ast::comments` but are excluded from
-    // the logical contract because they never change program meaning.
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     comments: Vec<Comment>,
 }
 
@@ -93,8 +87,6 @@ pub enum CommentKind {
 }
 
 #[derive(Debug)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
-#[cfg_attr(feature = "unstable-test-normalization", serde(rename = "SourceFile"))]
 pub struct SourceFile {
     tables: Vec<TableId>,
 }
@@ -112,16 +104,11 @@ impl SourceFile {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
-#[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Table"))]
 pub struct TableDecl {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     span: SourceSpan,
     name: String,
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     name_span: SourceSpan,
     schema_type: SchemaType,
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     schema_type_span: SourceSpan,
     fields: Vec<FieldId>,
 }
@@ -184,18 +171,11 @@ impl TableDecl {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
-#[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Field"))]
 pub struct FieldDecl {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     span: SourceSpan,
     name: String,
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     name_span: SourceSpan,
     source_type: SourceType,
-    // Logical normalization follows the table-to-fields edge. Serializing this
-    // storage back-reference would make that traversal cyclic.
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     owner: TableId,
 }
 
@@ -251,7 +231,6 @@ impl FieldDecl {
 /// The parser records exact spelling and locations here without deciding which
 /// type names Aureline supports.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub enum SourceType {
     Name(TypeName),
     Application(TypeApplication),
@@ -333,9 +312,7 @@ impl SourceType {
 
 /// A fixed, source-ordered tuple of zero or more meaning-free member types.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub struct TypeTuple {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     span: SourceSpan,
     members: Vec<SourceType>,
 }
@@ -354,9 +331,7 @@ impl TypeTuple {
 
 /// A meaning-free union of at least two source-ordered member types.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub struct TypeUnion {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     span: SourceSpan,
     members: Vec<SourceType>,
 }
@@ -388,9 +363,7 @@ impl TypeUnion {
 
 /// A meaning-free application of one type name to a non-empty, ordered argument list.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub struct TypeApplication {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     span: SourceSpan,
     name: TypeName,
     arguments: Vec<TypeArgument>,
@@ -432,7 +405,6 @@ impl TypeApplication {
 
 /// One ordered, uninterpreted argument in a type application.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub enum TypeArgument {
     Type(SourceType),
     Integer(IntegerArgument),
@@ -460,10 +432,8 @@ impl TypeArgument {
 
 /// An uninterpreted integer argument and its exact source location.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub struct IntegerArgument {
     raw: String,
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     span: SourceSpan,
 }
 
@@ -488,11 +458,8 @@ impl IntegerArgument {
 
 /// An exact, case-sensitive name reference and its source location.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
-#[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Name"))]
 pub struct TypeName {
     name: String,
-    #[cfg_attr(feature = "unstable-test-normalization", serde(skip))]
     span: SourceSpan,
 }
 
@@ -517,10 +484,7 @@ impl TypeName {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "unstable-test-normalization", derive(serde::Serialize))]
 pub enum SchemaType {
-    #[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Schemafull"))]
     Full,
-    #[cfg_attr(feature = "unstable-test-normalization", serde(rename = "Schemaless"))]
     Less,
 }

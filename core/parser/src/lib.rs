@@ -19,6 +19,26 @@ pub use aureline_ast::tokens::Token;
 use aureline_ast::{ast::Ast, source::SourceId};
 pub use problem::{IdentifierProblem, SyntaxProblem};
 
+/// Classifies the grammatical tokens in one source document.
+///
+/// Comments and inline whitespace are retained internally for parsing but do
+/// not appear in the returned stream. Use [`parse`] when source locations or
+/// syntax diagnostics beyond lexing are needed.
+///
+/// # Errors
+///
+/// Returns lexical [`SyntaxProblem`] values when the source contains an invalid
+/// token, identifier, unterminated block comment, or unrepresentable byte length.
+pub fn tokenize(source: &str) -> Result<Vec<Token<'_>>, Vec<SyntaxProblem>> {
+    lexer::lex(SourceId::new(0), source).map(|lexed| {
+        lexed
+            .tokens
+            .into_iter()
+            .map(|occurrence| occurrence.inner)
+            .collect()
+    })
+}
+
 /// Parses one source document using source ID `0` from [`SourceId::new`].
 ///
 /// Use [`parse_with_source`] when a caller manages multiple files and needs AST

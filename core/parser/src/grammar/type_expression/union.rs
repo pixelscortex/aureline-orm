@@ -26,26 +26,6 @@ use super::{
     parsed::ParsedTypeExpression,
 };
 
-/// Parses one member unchanged, two or more pipe-separated members as a union,
-/// or a known missing-member shape as recovery.
-///
-/// The supplied `member` parser already includes primary and unsupported
-/// postfix forms but not another same-level union. This gives `|` the loosest
-/// precedence at the current recursion level.
-///
-/// Recovery covers every tested missing-member position:
-///
-/// ```text
-/// | string          -> MissingUnionMember at the leading `|`
-/// string |          -> MissingUnionMember at the trailing `|`
-/// string | | int    -> MissingUnionMember at the second `|`
-/// record<|>         -> MissingUnionMember at the lone `|`
-/// ```
-///
-/// `leading_missing_member` consumes both `|` and the following member. That is
-/// important in `string | | int`: the second pipe and `int` become one recovered
-/// member, allowing the entire outer union shape to finish. The lone-pipe branch
-/// handles cases where a delimiter such as `>` follows immediately.
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     member: P,
 ) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra>
@@ -99,14 +79,6 @@ where
     choice((trailing_union, union, union_member))
 }
 
-/// Converts members in source order so the earliest recovered problem wins.
-/// Successful members remain structurally unchanged—including nested unions—
-/// before construction of the outer union.
-///
-/// For `array<> | string?`, conversion encounters the empty-arguments problem
-/// in the first member before the postfix-optional problem in the second and
-/// returns it unchanged. Only when every member is valid does this function
-/// construct [`SourceType::Union`] with a span covering the complete expression.
 fn build_union_or_preserve_problem(
     first_member: ParsedTypeExpression,
     remaining_members: Vec<ParsedTypeExpression>,
@@ -136,12 +108,6 @@ fn build_union_or_preserve_problem(
     ))
 }
 
-/// Preserves an earlier recovered member problem over the later missing-member
-/// pipe; the pipe is reported only when every consumed member is valid.
-///
-/// `string |` reports the trailing pipe. `string? |` instead retains the
-/// earlier postfix-optional problem at `?`, even though the parser consumes the
-/// later pipe to complete recovery.
 fn recover_trailing_pipe(
     first_member: ParsedTypeExpression,
     remaining_members: Vec<ParsedTypeExpression>,
@@ -155,11 +121,6 @@ fn recover_trailing_pipe(
     )
 }
 
-/// Creates the recovered member used wherever a pipe has no member on one side.
-///
-/// The span is always the offending pipe itself. In `| string` it is the first
-/// token; in `string | | int` it is the second pipe; in `record<|>` it is the
-/// lone pipe between the application delimiters.
 fn recover_missing_member(span: SimpleSpan) -> ParsedTypeExpression {
     ParsedTypeExpression::recovered(GrammarProblem::MissingUnionMember(span))
 }

@@ -11,7 +11,7 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
-aureline-parser = { path = "../../core/parser", features = ["unstable-test-normalization"] }
+aureline-parser = { path = "../../core/parser", features = ["contract-serde"] }
 chumsky = "0.13.0"
 serde = "1"
 

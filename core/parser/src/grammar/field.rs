@@ -20,55 +20,24 @@ use super::{
     type_expression,
 };
 
-/// A valid field staged until its surrounding table is known to be valid.
 pub(super) struct ParsedField {
-    /// Span of the complete `name type-expression` pair.
     span: SourceSpan,
-    /// Owned declared field name.
     name: String,
-    /// Span of the field name alone.
     name_span: SourceSpan,
-    /// Meaning-free type expression already converted to public AST data.
     source_type: SourceType,
 }
 
 impl ParsedField {
-    /// Allocates the staged field under the table currently owned by the
-    /// supplied builder.
     pub(super) fn alloc_in(self, fields: &mut TableFieldBuilder<'_>) {
         fields.alloc_field(self.span, self.name, self.name_span, self.source_type);
     }
 }
 
-/// Result of consuming one complete field-shaped token sequence.
 pub(super) enum FieldOutcome {
-    /// A valid field, ready for allocation if the complete table succeeds.
     Field(ParsedField),
-    /// A known malformed field. No public field node was constructed.
     Problem(GrammarProblem),
 }
 
-/// Parses a valid field or one of the recoverable malformed field shapes.
-///
-/// Alternative order is significant because several shapes share the same
-/// leading identifier:
-///
-/// 1. A normal-looking field whose type parser already recovered a precise
-///    problem wins first. `value string?` must retain `PostfixOptionalType`
-///    instead of being reconsidered as a split field name.
-/// 2. Three adjacent identifier tokens recover a whitespace-split name.
-///    `first name string` reports the gap between `first` and `name` as
-///    `InvalidIdentifier(ContainsWhitespace)`.
-/// 3. A pure integer name is recovered: `1 string` reports
-///    `InvalidIdentifier(StartsWithDigit)`.
-/// 4. Complete type-shaped names are recovered: `array<string> bool` reports
-///    `<`, and `User[] string` reports `[`, as identifier punctuation.
-/// 5. General reconstructed names are recovered: `na?me string` reports `?`.
-/// 6. The ordinary valid field is accepted last.
-///
-/// Structural-word tokens such as `table` do not match [`ident`] in a field
-/// name slot and remain ordinary parser failures unless they follow already
-/// recognized punctuation, as in `name?table string`.
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, FieldOutcome, ParserExtra> {
     let split_name =

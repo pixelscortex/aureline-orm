@@ -12,22 +12,6 @@ use super::{
     table,
 };
 
-/// Runs one complete document construction walk and returns its earliest typed
-/// recovery problem, if any.
-///
-/// A table parser returns `None` after allocating a valid table and `Some` after
-/// consuming a known malformed table shape. All table outcomes are collected so
-/// source-order selection is explicit:
-///
-/// ```text
-/// table Good schemafull {}
-/// table Bad schemafull { value [int string] }
-/// table AlsoBad schemafull { value string? }
-/// ```
-///
-/// The missing tuple separator is returned because its span precedes the later
-/// postfix-optional problem. Any allocations performed during this walk remain
-/// private and are discarded by [`super::parse`] when a problem is present.
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<GrammarProblem>, ParserExtra> {
     let newlines = just(Token::Newline).repeated();

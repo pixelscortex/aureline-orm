@@ -74,7 +74,6 @@ name = "aureline-wasm"
 version = "0.0.0"
 dependencies = [
  "aureline-parser",
- "chumsky",
  "console_error_panic_hook",
  "serde",
  "serde-wasm-bindgen",

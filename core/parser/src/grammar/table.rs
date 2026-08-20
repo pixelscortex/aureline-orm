@@ -23,30 +23,12 @@ use super::{
     state::{ParserExtra, TokenInput},
 };
 
-/// A parsed header retained until the body has also been checked.
 struct ParsedTableHeader {
-    /// Declared table name and its token span.
     name: Spanned<String>,
-    /// Schema mode and its keyword span.
     schema_type: Spanned<SchemaType>,
-    /// A recovered header problem, if the complete header shape was malformed.
     problem: Option<GrammarProblem>,
 }
 
-/// Parses either a normal `<name> <schema-mode>` header or the recoverable
-/// three-identifier shape `<name> <extra> <schema-mode>`.
-///
-/// The latter recognizes a whitespace-split table name:
-///
-/// ```text
-/// table User Profile schemafull {}
-///           ^ gap -> InvalidIdentifier(ContainsWhitespace)
-/// ```
-///
-/// The lexer omits comments from the token stream, so the raw byte gap may
-/// contain more than inline whitespace. Only a retained whitespace span that
-/// exactly fills the gap receives the identifier-specific classification;
-/// otherwise `<extra>` becomes [`GrammarProblem::Unexpected`].
 fn header_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTableHeader, ParserExtra> {
     let split_name = ident().then(ident()).then(schema_type()).map_with(
@@ -78,20 +60,6 @@ fn header_parser<'tokens, 'src: 'tokens>()
     choice((split_name, header))
 }
 
-/// Parses a brace-delimited sequence of newline-separated field outcomes.
-///
-/// Leading, trailing, and repeated newlines are allowed, so blank lines around
-/// fields are inert. A newline re-emitted from inside a multiline block comment
-/// also separates fields:
-///
-/// ```text
-/// first string /* boundary
-/// inside */ second int
-/// ```
-///
-/// A single-line block comment emits no newline, so `first string /* note */
-/// second int` reaches an unexpected-token problem instead of becoming two
-/// fields. Commas and semicolons are never field separators.
 fn body_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Vec<FieldOutcome>, ParserExtra> {
     let newlines = just(Token::Newline).repeated().at_least(1);
@@ -103,22 +71,6 @@ fn body_parser<'tokens, 'src: 'tokens>()
         .delimited_by(just(Token::LBrace), just(Token::RBrace))
 }
 
-/// Parses one complete table, returns its earliest typed problem, and allocates
-/// the table only when its header and every field are valid.
-///
-/// Name/header recovery precedes normal parsing:
-///
-/// - `table 1 schemafull {}` reports a leading-digit identifier problem;
-/// - `table array<string> schemafull {}` reports `<` as identifier punctuation;
-/// - `table User[] schemafull {}` reports `[` as identifier punctuation;
-/// - `table User?Name schemafull {}` reports `?` as identifier punctuation;
-/// - `table User ? Name schemafull {}` reports `?` as unexpected separated
-///   syntax;
-/// - `table User mystery {}` reports `mystery` as an unexpected schema mode.
-///
-/// The normal branch compares any header problem with all field problems by
-/// source position. Valid fields remain staged until that comparison succeeds;
-/// this prevents a malformed table from leaving public partial data in the AST.
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<GrammarProblem>, ParserExtra> {
     // Pure digits are Integer tokens because they are legal type arguments.

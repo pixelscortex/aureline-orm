@@ -1,11 +1,10 @@
 use aureline_parser::Token;
-use chumsky::Parser;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct LexerDetails {
-    pub tokens: Vec<Token>,
+pub struct LexerDetails<'source> {
+    pub tokens: Vec<Token<'source>>,
     pub errors: Vec<String>,
 }
 
@@ -15,13 +14,20 @@ pub fn start() {
 }
 
 #[wasm_bindgen]
+/// Returns the source's grammatical tokens and any lexical problems as a
+/// JavaScript value.
+///
+/// # Errors
+///
+/// Returns a JavaScript string error when the result cannot be serialized for
+/// the WASM boundary.
 pub fn lexer(source: &str) -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(&lexer_details(source))
         .map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
-fn lexer_details(source: &str) -> LexerDetails {
-    match aureline_parser::lexer().parse(source).into_result() {
+fn lexer_details(source: &str) -> LexerDetails<'_> {
+    match aureline_parser::tokenize(source) {
         Ok(tokens) => LexerDetails {
             tokens,
             errors: Vec::new(),

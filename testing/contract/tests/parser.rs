@@ -2,8 +2,25 @@ use aureline_ast::{
     ast::{CommentKind, SourceType, TypeArgument},
     source::{SourceId, SourceSpan, TextRange, TextSize},
 };
-use aureline_parser::{IdentifierProblem, SyntaxProblem};
+use aureline_parser::{IdentifierProblem, SyntaxProblem, Token};
 use aureline_test::aurl_test;
+
+#[test]
+fn tokenizer_exposes_only_grammar_tokens() {
+    let tokens = aureline_parser::tokenize("table User /* note */ schemafull {}")
+        .expect("the source contains only valid lexical forms");
+
+    assert_eq!(
+        tokens,
+        vec![
+            Token::Table,
+            Token::Ident("User"),
+            Token::Schemafull,
+            Token::LBrace,
+            Token::RBrace,
+        ]
+    );
+}
 
 #[test]
 fn schemafull_table_matches_the_logical_contract() {

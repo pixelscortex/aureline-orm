@@ -40,99 +40,28 @@ use chumsky::{error::Cheap, extra, prelude::*};
 
 use crate::{IdentifierProblem, SyntaxProblem, problem::source_span};
 
-/// A grammatical token paired with its half-open byte range in the source.
 pub(crate) type TokenOccurrence<'src> = Spanned<Token<'src>>;
 
-/// An intermediate lexer result paired with its half-open byte range.
-///
-/// Most source fragments produce one occurrence. A multiline block comment is
-/// the exception: it produces one comment occurrence plus an overlapping
-/// newline occurrence for every physical line boundary inside the comment.
 pub(super) type LexerOccurrence<'src> = Spanned<Lexeme<'src>>;
 
-/// Chumsky's unrecovered character-level error channel.
-///
-/// Expected malformed forms use [`Lexeme`] variants instead. This channel is
-/// reserved for characters that none of the lexical parsers can consume, such
-/// as `;` in `table T schemafull { value string; }`.
 pub(super) type LexerExtra = extra::Err<Cheap<SimpleSpan>>;
 
-/// One classified source occurrence before the output channels are separated.
 pub(super) enum Lexeme<'src> {
-    /// A token that participates in grammar parsing.
-    ///
-    /// Examples include `table`, an identifier such as `User`, the integer
-    /// argument `3`, a newline, and structural punctuation such as `<` or `|`.
     Token(Token<'src>),
-    /// A recognized identifier-shaped candidate with a precise boundary
-    /// violation.
-    ///
-    /// Examples:
-    ///
-    /// - `1User` carries [`IdentifierProblem::StartsWithDigit`] on `1`;
-    /// - `Café` carries [`IdentifierProblem::ContainsNonAscii`] on `é`;
-    /// - `User.Name` carries [`IdentifierProblem::ContainsDot`] on `.`;
-    /// - `` `User` `` carries [`IdentifierProblem::BackticksReserved`] on the
-    ///   complete backtick-delimited spelling.
     InvalidIdentifier(IdentifierProblem),
-    /// One complete space/tab run retained for contextual grammar recovery.
-    ///
-    /// It is never emitted into the grammatical token stream. Its exact range
-    /// lets declared-name recovery distinguish `User?Name` from `User ? Name`.
     InlineWhitespace,
-    /// A complete line or block comment retained as AST metadata.
-    ///
-    /// The comment itself never enters the grammar token stream. Newlines
-    /// inside a block comment are emitted separately as [`Token::Newline`].
     Comment(CommentKind),
-    /// A `/*` opener for which no closing `*/` exists before end of input.
-    ///
-    /// The occurrence covers the entire unfinished comment so the scanner can
-    /// consume the input. [`lex`] narrows the public diagnostic to the opening
-    /// `/*`, which is the location the author needs to fix.
     UnterminatedBlockComment,
 }
 
-/// Lexer output split according to what later parsing stages need.
-///
-/// All stored spans are byte ranges into the original source. Tokens and
-/// identifiers borrow their spelling from that source; the source text is not
-/// copied into this value.
 pub(crate) struct LexedSource<'src> {
-    /// The only occurrences supplied to the token grammar.
     pub(super) tokens: Vec<TokenOccurrence<'src>>,
-    /// Comments preserved for the final AST even though the grammar ignores
-    /// their contents.
     pub(super) comments: Vec<Comment>,
-    /// Complete runs of spaces/tabs, used only to classify name-recovery gaps.
     pub(super) inline_whitespace: Vec<SimpleSpan>,
-    /// Identity attached to every public AST and problem span.
     pub(super) source: SourceId,
-    /// End-of-input byte offset used by Chumsky when an error occurs at EOF.
     pub(super) source_len: usize,
 }
 
-/// Lexes one source file and converts recognized lexical failures into public
-/// [`SyntaxProblem`] values.
-///
-/// The common typed failures are:
-///
-/// ```text
-/// table 1User schemafull {}       # InvalidIdentifier(StartsWithDigit) at `1`
-/// table Café schemafull {}        # InvalidIdentifier(ContainsNonAscii) at `é`
-/// table User.Name schemafull {}   # InvalidIdentifier(ContainsDot) at `.`
-/// table `User` schemafull {}      # InvalidIdentifier(BackticksReserved)
-/// table T schemafull { x T; }     # InvalidToken at `;`
-/// table T schemafull {} /* open   # UnterminatedBlockComment at `/*`
-/// ```
-///
-/// Structural punctuation is intentionally absent from this list. For
-/// example, `?` lexes successfully as [`Token::Question`]; the grammar later
-/// reports either postfix optional syntax (`string?`) or punctuation in a
-/// declared name (`User?Name`) according to context.
-///
-/// Sources larger than [`TextSize`] can represent fail before scanning so every
-/// later byte boundary can be converted into an AST [`aureline_ast::source::SourceSpan`].
 pub(crate) fn lex(
     source_id: SourceId,
     source: &str,
@@ -186,21 +115,6 @@ pub(crate) fn lex(
     })
 }
 
-/// Builds the character-level parser that covers the complete source.
-///
-/// Alternative order records several lexical decisions:
-///
-/// - `//` and `/*` are attempted before identifier candidates, so comment
-///   delimiters never become identifier punctuation;
-/// - a terminated block comment is attempted before the unterminated form, so
-///   `/* closed */` is not diagnosed merely because both forms begin with `/*`;
-/// - a complete backtick-delimited spelling becomes the dedicated reserved-name
-///   problem rather than a generic invalid token;
-/// - newlines become grammar tokens, while spaces and tabs enter the separate
-///   [`Lexeme::InlineWhitespace`] channel.
-///
-/// Each branch returns a vector because a block comment may also emit newline
-/// tokens. The final `flatten` restores one source-ordered occurrence stream.
 #[must_use]
 fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<LexerOccurrence<'src>>, LexerExtra> {
     let punctuation = choice((
