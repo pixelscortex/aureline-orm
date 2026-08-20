@@ -1,105 +1,55 @@
-use aureline_ast::{TableFieldBuilder, ast::SourceType, source::SourceSpan, tokens::Token};
+//! Parses complete table declarations and commits their staged fields to the AST.
+//!
+//! The valid outer shape is:
+//!
+//! ```text
+//! table <name> (schemafull | schemaless) {
+//!     <field-name> <type-expression>
+//! }
+//! ```
+//!
+//! Physical newlines—not commas or semicolons—separate fields. Recovery parsers
+//! consume known malformed table names and headers so callers receive a precise
+//! problem rather than an error at a later brace or keyword.
+
+use aureline_ast::{ast::SchemaType, tokens::Token};
 use chumsky::prelude::*;
 
-use crate::grammar::{
-    GrammarProblem, ParserExtra, TokenInput, ident, integer, marked_source_type_parser,
-    punctuated_identifier, schema_type_parser, source_type_parser,
+use super::{
+    atom::{ident, integer, schema_type},
+    declared_name,
+    field::{self, FieldOutcome},
+    problem::GrammarProblem,
+    state::{ParserExtra, TokenInput},
 };
 
-struct ParsedField {
-    span: SourceSpan,
-    name: String,
-    name_span: SourceSpan,
-    source_type: SourceType,
-}
-
-impl ParsedField {
-    fn alloc_in(self, fields: &mut TableFieldBuilder<'_>) {
-        fields.alloc_field(self.span, self.name, self.name_span, self.source_type);
-    }
-}
-
-enum FieldOutcome {
-    Field(ParsedField),
-    Problem(GrammarProblem),
-}
-
-fn field_parser<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, TokenInput<'tokens, 'src>, FieldOutcome, ParserExtra> {
-    let split_name =
-        ident()
-            .then(ident())
-            .then(ident())
-            .map_with(|((name, source_type), extra), context| {
-                let state = &context.state().0;
-                let problem = match (
-                    state.inline_whitespace_between(name.span, source_type.span),
-                    state.inline_whitespace_between(source_type.span, extra.span),
-                ) {
-                    (Some(name_gap), Some(_)) => GrammarProblem::IdentifierWhitespace(name_gap),
-                    _ => GrammarProblem::Unexpected(extra.span),
-                };
-                FieldOutcome::Problem(problem)
-            });
-
-    let field = ident()
-        .then(source_type_parser())
-        .map_with(|(name, source_type), context| {
-            let field_span = context.span();
-            let state = &context.state().0;
-            match source_type.into_result() {
-                Ok(source_type) => FieldOutcome::Field(ParsedField {
-                    span: state.source_span(field_span),
-                    name: name.inner,
-                    name_span: state.source_span(name.span),
-                    source_type,
-                }),
-                Err(problem) => FieldOutcome::Problem(problem),
-            }
-        })
-        .boxed();
-    let recovered_field = field
-        .clone()
-        .filter(|field| matches!(field, FieldOutcome::Problem(_)));
-
-    // Pure digits are Integer tokens for type arguments; recover them before
-    // normal field parsing when they occupy the declared-name slot.
-    let integer_name = integer().then(source_type_parser()).map(|(name, _)| {
-        FieldOutcome::Problem(GrammarProblem::IdentifierStartsWithDigit(name.span))
-    });
-
-    // Consume a complete marked source-type shape before general compound
-    // recovery can absorb the following field type as another name suffix.
-    let marked_name = marked_source_type_parser()
-        .then(source_type_parser())
-        .map(|(problem, _)| FieldOutcome::Problem(problem));
-
-    let punctuated_name = punctuated_identifier()
-        .then(source_type_parser())
-        .map(|(name, _)| FieldOutcome::Problem(name.into_problem()));
-
-    // Preserve a structured source-type problem before compound-name recovery;
-    // valid partial fields still fall through so `split name type` retains its
-    // identifier-specific whitespace problem.
-    choice((
-        recovered_field,
-        split_name,
-        integer_name,
-        marked_name,
-        punctuated_name,
-        field,
-    ))
-}
-
+/// A parsed header retained until the body has also been checked.
 struct ParsedTableHeader {
+    /// Declared table name and its token span.
     name: Spanned<String>,
-    schema_type: Spanned<aureline_ast::ast::SchemaType>,
+    /// Schema mode and its keyword span.
+    schema_type: Spanned<SchemaType>,
+    /// A recovered header problem, if the complete header shape was malformed.
     problem: Option<GrammarProblem>,
 }
 
-fn table_header_parser<'tokens, 'src: 'tokens>()
+/// Parses either a normal `<name> <schema-mode>` header or the recoverable
+/// three-identifier shape `<name> <extra> <schema-mode>`.
+///
+/// The latter recognizes a whitespace-split table name:
+///
+/// ```text
+/// table User Profile schemafull {}
+///           ^ gap -> InvalidIdentifier(ContainsWhitespace)
+/// ```
+///
+/// The lexer omits comments from the token stream, so the raw byte gap may
+/// contain more than inline whitespace. Only a retained whitespace span that
+/// exactly fills the gap receives the identifier-specific classification;
+/// otherwise `<extra>` becomes [`GrammarProblem::Unexpected`].
+fn header_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTableHeader, ParserExtra> {
-    let split_name = ident().then(ident()).then(schema_type_parser()).map_with(
+    let split_name = ident().then(ident()).then(schema_type()).map_with(
         |((name, extra), schema_type), context| {
             let state = &context.state().0;
             let problem = state
@@ -116,23 +66,36 @@ fn table_header_parser<'tokens, 'src: 'tokens>()
     );
 
     let header = ident()
-        .then(schema_type_parser())
+        .then(schema_type())
         .map(|(name, schema_type)| ParsedTableHeader {
             name,
             schema_type,
             problem: None,
         });
 
-    // Try `name extra schema-type` first. An exact preserved whitespace gap
-    // makes `extra` the second half of a split name; any other gap leaves it an
-    // unexpected token while the same table shape is consumed for recovery.
+    // Try `name extra schema-type` first so the normal two-token header cannot
+    // succeed early and leave `extra` to fail later at the body opener.
     choice((split_name, header))
 }
 
-fn table_body_parser<'tokens, 'src: 'tokens>()
+/// Parses a brace-delimited sequence of newline-separated field outcomes.
+///
+/// Leading, trailing, and repeated newlines are allowed, so blank lines around
+/// fields are inert. A newline re-emitted from inside a multiline block comment
+/// also separates fields:
+///
+/// ```text
+/// first string /* boundary
+/// inside */ second int
+/// ```
+///
+/// A single-line block comment emits no newline, so `first string /* note */
+/// second int` reaches an unexpected-token problem instead of becoming two
+/// fields. Commas and semicolons are never field separators.
+fn body_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Vec<FieldOutcome>, ParserExtra> {
     let newlines = just(Token::Newline).repeated().at_least(1);
-    field_parser()
+    field::parser()
         .separated_by(newlines)
         .allow_leading()
         .allow_trailing()
@@ -140,41 +103,60 @@ fn table_body_parser<'tokens, 'src: 'tokens>()
         .delimited_by(just(Token::LBrace), just(Token::RBrace))
 }
 
-pub(crate) fn table_parser<'tokens, 'src: 'tokens>()
+/// Parses one complete table, returns its earliest typed problem, and allocates
+/// the table only when its header and every field are valid.
+///
+/// Name/header recovery precedes normal parsing:
+///
+/// - `table 1 schemafull {}` reports a leading-digit identifier problem;
+/// - `table array<string> schemafull {}` reports `<` as identifier punctuation;
+/// - `table User[] schemafull {}` reports `[` as identifier punctuation;
+/// - `table User?Name schemafull {}` reports `?` as identifier punctuation;
+/// - `table User ? Name schemafull {}` reports `?` as unexpected separated
+///   syntax;
+/// - `table User mystery {}` reports `mystery` as an unexpected schema mode.
+///
+/// The normal branch compares any header problem with all field problems by
+/// source position. Valid fields remain staged until that comparison succeeds;
+/// this prevents a malformed table from leaving public partial data in the AST.
+pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<GrammarProblem>, ParserExtra> {
-    // Pure digits are Integer tokens for type arguments; recover them before
-    // normal table parsing when they occupy the declared-name slot.
+    // Pure digits are Integer tokens because they are legal type arguments.
+    // Only this table-name position can reclassify `table 1 ...` as a declared
+    // identifier that starts with a digit.
     let integer_name = just(Token::Table)
         .ignore_then(integer())
-        .then(schema_type_parser())
-        .then(table_body_parser())
+        .then(schema_type())
+        .then(body_parser())
         .map(|((name, _), _)| Some(GrammarProblem::IdentifierStartsWithDigit(name.span)));
 
-    // As in field recovery, consume the complete marked source-type shape before
-    // the general compound branch can absorb the following schema mode.
+    // Consume the complete marked type-expression shape before the general
+    // compound branch can absorb the following schema mode. For
+    // `table array<string,3> schemafull {}`, this retains the opening `<` as the
+    // first name violation.
     let marked_name = just(Token::Table)
-        .ignore_then(marked_source_type_parser())
-        .then(schema_type_parser())
-        .then(table_body_parser())
+        .ignore_then(declared_name::marked_type_expression())
+        .then(schema_type())
+        .then(body_parser())
         .map(|((problem, _), _)| Some(problem));
 
     let punctuated_name = just(Token::Table)
-        .ignore_then(punctuated_identifier())
-        .then(schema_type_parser())
-        .then(table_body_parser())
+        .ignore_then(declared_name::punctuated())
+        .then(schema_type())
+        .then(body_parser())
         .map(|((name, _), _)| Some(name.into_problem()));
 
-    // Recover `table name unknown { ... }` before the normal header alternatives
-    // so the unknown schema word itself remains the unexpected token.
+    // Recover `table User mystery {}` before normal header parsing so `mystery`
+    // itself remains the unexpected token instead of a later `{` or EOF.
     let missing_schema_type = just(Token::Table)
         .ignore_then(ident())
         .then(ident())
-        .then(table_body_parser())
+        .then(body_parser())
         .map(|((_, unexpected), _)| Some(GrammarProblem::Unexpected(unexpected.span)));
 
     let table = just(Token::Table)
-        .ignore_then(table_header_parser())
-        .then(table_body_parser())
+        .ignore_then(header_parser())
+        .then(body_parser())
         .map_with(|(header, fields), context| {
             let mut problem = header.problem;
             let mut parsed_fields = Vec::new();
@@ -197,7 +179,7 @@ pub(crate) fn table_parser<'tokens, 'src: 'tokens>()
             let table_span = state.source_span(table_span);
             let name_span = state.source_span(header.name.span);
             let schema_type_span = state.source_span(header.schema_type.span);
-            state.ast.alloc_table(
+            state.ast_mut().alloc_table(
                 table_span,
                 header.name.inner,
                 name_span,
