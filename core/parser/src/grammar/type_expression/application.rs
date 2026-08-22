@@ -1,7 +1,7 @@
 //! Type application parsing, argument conversion, and incomplete-list recovery.
 //!
-//! A type application is an unresolved name followed by one or more comma-
-//! separated arguments in angle brackets:
+//! A type application is an unresolved name followed by comma-separated
+//! arguments in angle brackets:
 //!
 //! ```text
 //! array<string>
@@ -9,10 +9,10 @@
 //! custom_type<record<A | B>, 003>
 //! ```
 //!
-//! An argument is either a complete recursive type expression or an integer.
-//! The parser preserves integer spelling and does not validate the application
-//! name, arity, or semantics. Two known incomplete forms receive directed
-//! problems: `array<>` and `array<string,>`.
+//! The parser consumes the angle-bracket item list once. Ordinary Rust then
+//! distinguishes valid arguments, the two directed incomplete forms, and
+//! malformed comma/adjacency shapes that retain generic `UnexpectedToken`
+//! behavior.
 
 use aureline_ast::{ast::SourceType, tokens::Token};
 use chumsky::prelude::*;
@@ -25,6 +25,11 @@ use super::{
     },
     parsed::{ParsedTypeArgument, ParsedTypeExpression},
 };
+
+enum ApplicationItem {
+    Argument(Spanned<ParsedTypeArgument>),
+    Comma(SimpleSpan),
+}
 
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
@@ -40,83 +45,90 @@ where
         integer_argument,
     ))
     .boxed();
-    let arguments = argument.clone().then(
+    let item = choice((
+        argument.spanned().map(ApplicationItem::Argument),
         just(Token::Comma)
-            .ignore_then(argument)
-            .repeated()
-            .collect::<Vec<_>>(),
-    );
+            .spanned()
+            .map(|comma: Spanned<Token<'src>>| ApplicationItem::Comma(comma.span)),
+    ))
+    .boxed();
 
-    let application = ident()
+    ident()
         .then(just(Token::LAngle).spanned())
-        .then(arguments.clone())
-        .then_ignore(just(Token::RAngle))
-        .map_with(|((name, opening), (first, rest)), context| {
-            finish(
+        .then(
+            item.repeated()
+                .collect::<Vec<_>>()
+                .then_ignore(just(Token::RAngle)),
+        )
+        .map_with(|((name, opening), items), context| {
+            classify(
                 name,
                 opening.span,
-                first,
-                rest,
+                items,
                 context.span(),
                 &context.state().0,
             )
-        });
-
-    let trailing_comma = ident()
-        .then(just(Token::LAngle).spanned())
-        .then(arguments.then(just(Token::Comma).spanned()))
-        .then_ignore(just(Token::RAngle))
-        .map_with(|((name, opening), ((first, rest), comma)), context| {
-            finish_trailing_comma(
-                &name,
-                opening.span,
-                first,
-                rest,
-                comma.span,
-                &context.state().0,
-            )
-        });
-
-    choice((empty_parser(), trailing_comma, application))
+        })
 }
 
-fn empty_parser<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra> {
-    ident()
-        .then(just(Token::LAngle).spanned())
-        .then(just(Token::RAngle).spanned())
-        .map(|((name, opening), closing)| finish_empty(&name, opening.span, closing.span))
-}
-
-fn finish(
+fn classify(
     name: Spanned<String>,
     opening: SimpleSpan,
-    first_argument: ParsedTypeArgument,
-    remaining_arguments: Vec<ParsedTypeArgument>,
+    items: Vec<ApplicationItem>,
     application_span: SimpleSpan,
     state: &ParserState,
 ) -> ParsedTypeExpression {
-    let mut arguments = std::iter::once(first_argument)
-        .chain(remaining_arguments)
-        .map(|argument| argument.into_result(state));
-    let first_argument = match arguments.next().expect("application is non-empty") {
-        Ok(argument) => argument,
-        Err(problem) => {
-            return ParsedTypeExpression::application(Err(problem), name.span, opening);
-        }
+    if let Some(problem) = malformed_shape(&items) {
+        return ParsedTypeExpression::application(Err(problem), name.span, opening);
+    }
+
+    if items.is_empty() {
+        return ParsedTypeExpression::application(
+            Err(GrammarProblem::EmptyTypeArguments(SimpleSpan::from(
+                opening.start..application_span.end,
+            ))),
+            name.span,
+            opening,
+        );
+    }
+
+    let trailing_comma = match items.last() {
+        Some(ApplicationItem::Comma(span)) => Some(*span),
+        _ => None,
     };
-    let remaining_arguments = match arguments.collect::<Result<Vec<_>, _>>() {
-        Ok(arguments) => arguments,
-        Err(problem) => {
-            return ParsedTypeExpression::application(Err(problem), name.span, opening);
+    let arguments = items.into_iter().filter_map(|item| match item {
+        ApplicationItem::Argument(argument) => Some(argument.inner),
+        ApplicationItem::Comma(_) => None,
+    });
+
+    let mut converted = Vec::new();
+    for argument in arguments {
+        match argument.into_result(state) {
+            Ok(argument) => converted.push(argument),
+            Err(problem) => {
+                return ParsedTypeExpression::application(Err(problem), name.span, opening);
+            }
         }
-    };
+    }
+
+    if let Some(comma) = trailing_comma {
+        return ParsedTypeExpression::application(
+            Err(GrammarProblem::TrailingTypeArgumentComma(comma)),
+            name.span,
+            opening,
+        );
+    }
+
+    let mut arguments = converted.into_iter();
+    let first_argument = arguments
+        .next()
+        .expect("a non-empty application has a first argument");
     ParsedTypeExpression::application(
         Ok(SourceType::application(
             name.inner,
             state.source_span(name.span),
             first_argument,
-            remaining_arguments,
+            arguments.collect(),
             state.source_span(application_span),
         )),
         name.span,
@@ -124,34 +136,21 @@ fn finish(
     )
 }
 
-fn finish_trailing_comma(
-    name: &Spanned<String>,
-    opening: SimpleSpan,
-    first_argument: ParsedTypeArgument,
-    remaining_arguments: Vec<ParsedTypeArgument>,
-    comma: SimpleSpan,
-    state: &ParserState,
-) -> ParsedTypeExpression {
-    let nested_problem = std::iter::once(first_argument)
-        .chain(remaining_arguments)
-        .find_map(|argument| argument.into_result(state).err());
-    ParsedTypeExpression::application(
-        Err(nested_problem.unwrap_or(GrammarProblem::TrailingTypeArgumentComma(comma))),
-        name.span,
-        opening,
-    )
-}
-
-fn finish_empty(
-    name: &Spanned<String>,
-    opening: SimpleSpan,
-    closing: SimpleSpan,
-) -> ParsedTypeExpression {
-    ParsedTypeExpression::application(
-        Err(GrammarProblem::EmptyTypeArguments(SimpleSpan::from(
-            opening.start..closing.end,
-        ))),
-        name.span,
-        opening,
-    )
+fn malformed_shape(items: &[ApplicationItem]) -> Option<GrammarProblem> {
+    for (index, item) in items.iter().enumerate() {
+        match item {
+            ApplicationItem::Comma(span)
+                if index == 0 || matches!(items[index - 1], ApplicationItem::Comma(_)) =>
+            {
+                return Some(GrammarProblem::Unexpected(*span));
+            }
+            ApplicationItem::Argument(argument)
+                if index > 0 && matches!(items[index - 1], ApplicationItem::Argument(_)) =>
+            {
+                return Some(GrammarProblem::Unexpected(argument.span));
+            }
+            ApplicationItem::Argument(_) | ApplicationItem::Comma(_) => {}
+        }
+    }
+    None
 }

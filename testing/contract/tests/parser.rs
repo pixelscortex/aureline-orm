@@ -448,6 +448,17 @@ fn recursive_type_applications_retain_precise_spans_and_integer_spelling() {
 }
 
 #[test]
+fn deeply_nested_type_applications_complete_through_the_public_parser() {
+    let mut source_type = String::from("string");
+    for _ in 0..128 {
+        source_type = format!("array<{source_type}>");
+    }
+    let source = format!("table T schemafull {{ value {source_type} }}");
+
+    aureline_parser::parse(&source).expect("deeply nested applications should complete");
+}
+
+#[test]
 fn an_empty_type_argument_list_is_incomplete() {
     let errors = aureline_parser::parse("table User schemafull { values array<> }")
         .expect_err("a type application requires at least one argument");
@@ -467,6 +478,45 @@ fn a_trailing_type_argument_comma_is_incomplete() {
         errors,
         vec![SyntaxProblem::TrailingTypeArgumentComma {
             span: span(SourceId::new(0), 43, 44),
+        }]
+    );
+}
+
+#[test]
+fn collection_shapes_preserve_current_public_behavior() {
+    for (source, start, end) in [
+        ("table T schemafull { value array<,A> }", 33, 34),
+        ("table T schemafull { value array<A,,B> }", 35, 36),
+    ] {
+        let errors = aureline_parser::parse(source).expect_err("the application is malformed");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::UnexpectedToken {
+                span: span(SourceId::new(0), start, end),
+            }]
+        );
+    }
+
+    for (source, start) in [
+        ("table T schemafull { value [,,,] }", 28),
+        ("table T schemafull { value [,] }", 28),
+    ] {
+        let errors = aureline_parser::parse(source).expect_err("the tuple is malformed");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::MissingTupleMember {
+                span: span(SourceId::new(0), start, start + 1),
+            }]
+        );
+    }
+
+    assert!(aureline_parser::parse("table T schemafull { value [A,] }").is_ok());
+    let errors = aureline_parser::parse("table T schemafull { value [A B C] }")
+        .expect_err("the tuple is missing separators");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::MissingTupleSeparator {
+            span: span(SourceId::new(0), 30, 31),
         }]
     );
 }
@@ -769,16 +819,7 @@ fn identifier_punctuation_reports_its_specific_boundary() {
             IdentifierProblem::ContainsPunctuation,
         ),
     ] {
-        let errors = aureline_parser::parse(source)
-            .expect_err("an identifier cannot contain ASCII punctuation");
-
-        assert_eq!(
-            errors,
-            vec![SyntaxProblem::InvalidIdentifier {
-                problem,
-                span: span(SourceId::new(0), 10, 11),
-            }]
-        );
+        assert_invalid_identifier(source, problem, span(SourceId::new(0), 10, 11));
     }
 
     let errors = aureline_parser::parse("table array<string> schemafull {}")
@@ -825,6 +866,18 @@ fn identifier_punctuation_reports_its_specific_boundary() {
             }]
         ));
     }
+}
+
+fn assert_invalid_identifier(source: &str, problem: IdentifierProblem, location: SourceSpan) {
+    let errors = aureline_parser::parse(source)
+        .expect_err("the public parser should reject the invalid identifier");
+    assert_eq!(
+        errors,
+        vec![SyntaxProblem::InvalidIdentifier {
+            problem,
+            span: location,
+        }]
+    );
 }
 
 #[test]

@@ -127,6 +127,10 @@ impl ParsedTypeExpression {
             })
     }
 
+    pub(in crate::grammar) fn problem(&self) -> Option<GrammarProblem> {
+        self.outcome.as_ref().err().copied()
+    }
+
     pub(in crate::grammar) fn into_result(self) -> Result<SourceType, GrammarProblem> {
         self.outcome
     }

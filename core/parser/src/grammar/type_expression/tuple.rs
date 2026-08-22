@@ -10,11 +10,9 @@
 //! [A | B, record<C>]
 //! ```
 //!
-//! Recovery distinguishes two authoring mistakes. A comma without a member
-//! produces [`GrammarProblem::MissingTupleMember`]; an adjacent member without a
-//! comma produces [`GrammarProblem::MissingTupleSeparator`]. Recovery helpers
-//! keep an earlier malformed member when present rather than replacing it with a
-//! later tuple error.
+//! The parser consumes the bracketed item sequence once. Ordinary Rust then
+//! classifies comma placement and nested member problems, making recovery
+//! precedence explicit instead of distributing it across competing parsers.
 
 use aureline_ast::{ast::SourceType, tokens::Token};
 use chumsky::prelude::*;
@@ -27,6 +25,11 @@ use super::{
     parsed::ParsedTypeExpression,
 };
 
+enum TupleItem {
+    Member(Spanned<ParsedTypeExpression>),
+    Comma(SimpleSpan),
+}
+
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
 ) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra>
@@ -35,94 +38,72 @@ where
         + Clone
         + 'tokens,
 {
-    // Consume `, member` before accepting a lone comma so a recoverable member
-    // is not stranded after the punctuation that caused its problem.
-    let leading_missing_member = just(Token::Comma)
-        .spanned()
-        .then_ignore(type_expression.clone())
-        .map(|comma| recover_missing_member(comma.span));
-    let lone_missing_member = just(Token::Comma)
-        .spanned()
-        .map(|comma: Spanned<Token<'src>>| recover_missing_member(comma.span));
-    let member = choice((
-        leading_missing_member,
-        lone_missing_member,
-        type_expression.clone(),
+    // Commas and members disagree on their first token, so this choice only
+    // consumes one item at a time and never retries a complete member list.
+    let item = choice((
+        just(Token::Comma)
+            .spanned()
+            .map(|comma: Spanned<Token<'src>>| TupleItem::Comma(comma.span)),
+        type_expression.spanned().map(TupleItem::Member),
     ))
     .boxed();
-    let separated_member = just(Token::Comma).ignore_then(member.clone());
 
-    // Try missing-separator recovery before the normal tuple shape. Both begin
-    // with `[ member`, but only this branch can consume an immediately adjacent
-    // second member and attach the problem to that member's complete span.
-    let missing_separator = member
-        .clone()
-        .then(separated_member.clone().repeated().collect::<Vec<_>>())
-        .then(
-            type_expression
-                .clone()
-                .map_with(|_, context| context.span()),
-        )
-        .then(
-            choice((separated_member.clone(), member.clone()))
-                .repeated()
-                .collect::<Vec<_>>(),
-        )
-        .then_ignore(just(Token::Comma).or_not())
+    item.repeated()
+        .collect::<Vec<_>>()
         .delimited_by(just(Token::LBracket), just(Token::RBracket))
-        .map(|(((first, separated), adjacent_span), _)| {
-            recover_missing_separator(
-                std::iter::once(first).chain(separated).collect(),
-                adjacent_span,
-            )
-        });
-
-    let members = member
-        .clone()
-        .then(separated_member.repeated().collect::<Vec<_>>())
-        .then_ignore(just(Token::Comma).or_not())
-        .map(|(first, rest)| std::iter::once(first).chain(rest).collect::<Vec<_>>())
-        .or_not()
-        .map(Option::unwrap_or_default);
-    let tuple = members
-        .delimited_by(just(Token::LBracket), just(Token::RBracket))
-        .map_with(|members, context| {
-            build_tuple_or_preserve_problem(members, context.span(), &context.state().0)
-        });
-    choice((missing_separator, tuple))
+        .map_with(|items, context| classify(items, context.span(), &context.state().0))
 }
 
-fn build_tuple_or_preserve_problem(
-    members: Vec<ParsedTypeExpression>,
+fn classify(
+    items: Vec<TupleItem>,
     tuple_span: SimpleSpan,
     state: &ParserState,
 ) -> ParsedTypeExpression {
-    let members = match members
-        .into_iter()
-        .map(ParsedTypeExpression::into_result)
-        .collect::<Result<Vec<_>, _>>()
-    {
-        Ok(members) => members,
-        Err(problem) => return ParsedTypeExpression::recovered(problem),
-    };
-    ParsedTypeExpression::valid(SourceType::tuple(members, state.source_span(tuple_span)))
-}
+    let mut problems = shape_problems(&items);
+    let mut members = Vec::new();
 
-fn recover_missing_member(span: SimpleSpan) -> ParsedTypeExpression {
-    ParsedTypeExpression::recovered(GrammarProblem::MissingTupleMember(span))
-}
+    for item in items {
+        if let TupleItem::Member(member) = item {
+            match member.inner.into_result() {
+                Ok(member) => members.push(member),
+                Err(problem) => problems.push(problem),
+            }
+        }
+    }
 
-fn recover_missing_separator(
-    preceding: Vec<ParsedTypeExpression>,
-    adjacent_span: SimpleSpan,
-) -> ParsedTypeExpression {
-    match preceding
+    match problems
         .into_iter()
-        .find_map(|member| member.into_result().err())
+        .min_by_key(|problem| problem.span().start)
     {
         Some(problem) => ParsedTypeExpression::recovered(problem),
         None => {
-            ParsedTypeExpression::recovered(GrammarProblem::MissingTupleSeparator(adjacent_span))
+            ParsedTypeExpression::valid(SourceType::tuple(members, state.source_span(tuple_span)))
         }
     }
+}
+
+fn shape_problems(items: &[TupleItem]) -> Vec<GrammarProblem> {
+    items
+        .iter()
+        .enumerate()
+        .filter_map(|(index, item)| match item {
+            // `[, A]`, `[,]`, and `[,,,]` report the first comma without a
+            // member on its left, matching the existing public contract.
+            TupleItem::Comma(span) if index == 0 => Some(GrammarProblem::MissingTupleMember(*span)),
+            // `[A,, B]` reports the second comma because no member occurs
+            // between the two commas.
+            TupleItem::Comma(span) if matches!(items[index - 1], TupleItem::Comma(_)) => {
+                Some(GrammarProblem::MissingTupleMember(*span))
+            }
+            // `[A B]` reports the complete second member as the missing
+            // separator's span.
+            TupleItem::Member(member)
+                if index > 0 && matches!(items[index - 1], TupleItem::Member(_)) =>
+            {
+                Some(GrammarProblem::MissingTupleSeparator(member.span))
+            }
+            // One trailing comma is valid tuple syntax.
+            TupleItem::Comma(_) | TupleItem::Member(_) => None,
+        })
+        .collect()
 }
