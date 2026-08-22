@@ -27,7 +27,7 @@ struct ApplicationMark {
 impl ApplicationMark {
     const fn into_declared_name_problem(self) -> GrammarProblem {
         if self.joined_to_name {
-            GrammarProblem::IdentifierPunctuation('<', self.opening)
+            GrammarProblem::IdentifierPunctuation(self.opening)
         } else {
             GrammarProblem::Unexpected(self.opening)
         }
@@ -43,7 +43,7 @@ struct PostfixArrayMark {
 impl PostfixArrayMark {
     const fn into_declared_name_problem(self) -> GrammarProblem {
         if self.joined_to_type {
-            GrammarProblem::IdentifierPunctuation('[', self.opening)
+            GrammarProblem::IdentifierPunctuation(self.opening)
         } else {
             GrammarProblem::Unexpected(self.opening)
         }

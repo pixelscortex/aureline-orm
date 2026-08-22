@@ -730,43 +730,43 @@ fn identifier_punctuation_reports_its_specific_boundary() {
         ),
         (
             "table User@Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation('@'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User?Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation('?'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User<Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation('<'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User>Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation('>'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User,Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation(','),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User??Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation('?'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User?Name,More schemafull {}",
-            IdentifierProblem::ContainsPunctuation('?'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User?Name , More schemafull {}",
-            IdentifierProblem::ContainsPunctuation('?'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User?1 schemafull {}",
-            IdentifierProblem::ContainsPunctuation('?'),
+            IdentifierProblem::ContainsPunctuation,
         ),
         (
             "table User?table schemafull {}",
-            IdentifierProblem::ContainsPunctuation('?'),
+            IdentifierProblem::ContainsPunctuation,
         ),
     ] {
         let errors = aureline_parser::parse(source)
@@ -786,7 +786,7 @@ fn identifier_punctuation_reports_its_specific_boundary() {
     assert_eq!(
         errors,
         vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsPunctuation('<'),
+            problem: IdentifierProblem::ContainsPunctuation,
             span: span(SourceId::new(0), 11, 12),
         }]
     );
@@ -796,7 +796,7 @@ fn identifier_punctuation_reports_its_specific_boundary() {
     assert_eq!(
         errors,
         vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsPunctuation('<'),
+            problem: IdentifierProblem::ContainsPunctuation,
             span: span(SourceId::new(0), 11, 12),
         }]
     );
@@ -806,7 +806,7 @@ fn identifier_punctuation_reports_its_specific_boundary() {
     assert_eq!(
         errors,
         vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsPunctuation('<'),
+            problem: IdentifierProblem::ContainsPunctuation,
             span: span(SourceId::new(0), 11, 12),
         }]
     );
@@ -816,10 +816,13 @@ fn identifier_punctuation_reports_its_specific_boundary() {
         "table User schemafull { na ? me string }",
     ] {
         let errors = aureline_parser::parse(source)
-            .expect_err("separate punctuation is syntax, not part of an identifier");
+            .expect_err("separate punctuation still violates the declared name");
         assert!(matches!(
             errors.as_slice(),
-            [SyntaxProblem::UnexpectedToken { .. }]
+            [SyntaxProblem::InvalidIdentifier {
+                problem: IdentifierProblem::ContainsPunctuation,
+                ..
+            }]
         ));
     }
 }
@@ -933,7 +936,7 @@ fn field_names_share_the_identifier_boundary() {
         ),
         (
             "table User schemafull { na@me string }",
-            IdentifierProblem::ContainsPunctuation('@'),
+            IdentifierProblem::ContainsPunctuation,
             26,
             27,
         ),
@@ -964,24 +967,24 @@ fn field_names_share_the_identifier_boundary() {
 
 #[test]
 fn structural_type_punctuation_in_field_names_retains_the_first_violation() {
-    for (candidate, punctuation) in [
-        ("na?me", '?'),
-        ("na<me", '<'),
-        ("na>me", '>'),
-        ("na,me", ','),
-        ("na??me", '?'),
-        ("na?me,more", '?'),
-        ("na?me , more", '?'),
-        ("User?1", '?'),
-        ("User?table", '?'),
-        ("array<string>", '<'),
-        ("array<3>", '<'),
-        ("array<string,3>", '<'),
+    for candidate in [
+        "na?me",
+        "na<me",
+        "na>me",
+        "na,me",
+        "na??me",
+        "na?me,more",
+        "na?me , more",
+        "User?1",
+        "User?table",
+        "array<string>",
+        "array<3>",
+        "array<string,3>",
     ] {
         let source = format!("table User schemafull {{ {candidate} string }}");
         let punctuation_offset = candidate
-            .find(punctuation)
-            .expect("the case contains its expected punctuation");
+            .find(|character: char| character.is_ascii_punctuation() && character != '_')
+            .expect("the case contains punctuation");
         let candidate_start = source
             .find(candidate)
             .expect("the generated source contains the field-name candidate");
@@ -992,7 +995,7 @@ fn structural_type_punctuation_in_field_names_retains_the_first_violation() {
         assert_eq!(
             errors,
             vec![SyntaxProblem::InvalidIdentifier {
-                problem: IdentifierProblem::ContainsPunctuation(punctuation),
+                problem: IdentifierProblem::ContainsPunctuation,
                 span: span(SourceId::new(0), start, start + 1),
             }]
         );
@@ -1010,7 +1013,7 @@ fn postfix_array_brackets_are_identifier_punctuation_in_declared_names() {
         assert_eq!(
             errors,
             vec![SyntaxProblem::InvalidIdentifier {
-                problem: IdentifierProblem::ContainsPunctuation('['),
+                problem: IdentifierProblem::ContainsPunctuation,
                 span: span(SourceId::new(0), opening, opening + 1),
             }]
         );
@@ -1022,7 +1025,7 @@ fn compound_identifier_violations_report_the_first_offending_bytes() {
     for (source, problem, start, end) in [
         (
             "table User::Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation(':'),
+            IdentifierProblem::ContainsPunctuation,
             10,
             11,
         ),
@@ -1058,7 +1061,7 @@ fn slash_inside_an_identifier_is_punctuation_not_a_comment() {
     assert_eq!(
         errors,
         vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsPunctuation('/'),
+            problem: IdentifierProblem::ContainsPunctuation,
             span: span(SourceId::new(0), 10, 11),
         }]
     );

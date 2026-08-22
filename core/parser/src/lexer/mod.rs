@@ -11,9 +11,8 @@
 //!
 //! Keeping those channels separate is deliberate. Comments do not affect the
 //! grammar, but callers still need their exact source locations. Spaces and
-//! tabs usually do not affect the grammar either, but they distinguish an
-//! attached malformed name such as `User?Name` from separated syntax such as
-//! `User ? Name`.
+//! tabs usually do not affect the grammar either, but they remain available
+//! for diagnostics such as split declaration names.
 //!
 //! This module recognizes characters, not their grammatical role. In
 //! particular, `<`, `>`, `[`, `]`, `,`, `?`, and `|` are always ordinary

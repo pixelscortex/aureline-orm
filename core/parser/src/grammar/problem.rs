@@ -17,7 +17,7 @@ use crate::{IdentifierProblem, SyntaxProblem, problem::source_span};
 pub(super) enum GrammarProblem {
     IdentifierWhitespace(SimpleSpan),
     IdentifierStartsWithDigit(SimpleSpan),
-    IdentifierPunctuation(char, SimpleSpan),
+    IdentifierPunctuation(SimpleSpan),
     EmptyTypeArguments(SimpleSpan),
     TrailingTypeArgumentComma(SimpleSpan),
     PostfixOptionalType(SimpleSpan),
@@ -33,7 +33,7 @@ impl GrammarProblem {
         match self {
             Self::IdentifierWhitespace(span)
             | Self::IdentifierStartsWithDigit(span)
-            | Self::IdentifierPunctuation(_, span)
+            | Self::IdentifierPunctuation(span)
             | Self::EmptyTypeArguments(span)
             | Self::TrailingTypeArgumentComma(span)
             | Self::PostfixOptionalType(span)
@@ -77,8 +77,8 @@ impl GrammarProblem {
                 problem: IdentifierProblem::StartsWithDigit,
                 span,
             },
-            Self::IdentifierPunctuation(punctuation, _) => SyntaxProblem::InvalidIdentifier {
-                problem: IdentifierProblem::ContainsPunctuation(punctuation),
+            Self::IdentifierPunctuation(_) => SyntaxProblem::InvalidIdentifier {
+                problem: IdentifierProblem::ContainsPunctuation,
                 span,
             },
             Self::EmptyTypeArguments(_) => SyntaxProblem::EmptyTypeArguments { span },

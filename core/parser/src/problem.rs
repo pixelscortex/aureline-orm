@@ -39,8 +39,8 @@ pub enum IdentifierProblem {
     ///
     /// Examples include `User@Name`, `User/Name`, and contextual structural
     /// punctuation such as `User?Name` or `array<string>` in a declared-name
-    /// slot. The stored character and span identify the first violation.
-    ContainsPunctuation(char),
+    /// slot. The problem span identifies the first violation.
+    ContainsPunctuation,
     /// An identifier contained inline whitespace.
     ///
     /// Triggers: `table User Profile schemafull {}` and the field declaration

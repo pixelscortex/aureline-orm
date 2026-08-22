@@ -108,7 +108,7 @@ fn identifier_problem(candidate: &str) -> Option<(IdentifierProblem, usize, usiz
                 '.' => IdentifierProblem::ContainsDot,
                 '-' => IdentifierProblem::ContainsHyphen,
                 punctuation if punctuation.is_ascii_punctuation() && punctuation != '_' => {
-                    IdentifierProblem::ContainsPunctuation(punctuation)
+                    IdentifierProblem::ContainsPunctuation
                 }
                 _ => return None,
             }
