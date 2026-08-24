@@ -27,9 +27,9 @@ struct ApplicationMark {
 impl ApplicationMark {
     const fn into_declared_name_problem(self) -> GrammarProblem {
         if self.joined_to_name {
-            GrammarProblem::IdentifierPunctuation(self.opening)
+            GrammarProblem::identifier_punctuation(self.opening)
         } else {
-            GrammarProblem::Unexpected(self.opening)
+            GrammarProblem::unexpected(self.opening)
         }
     }
 }
@@ -43,9 +43,9 @@ struct PostfixArrayMark {
 impl PostfixArrayMark {
     const fn into_declared_name_problem(self) -> GrammarProblem {
         if self.joined_to_type {
-            GrammarProblem::IdentifierPunctuation(self.opening)
+            GrammarProblem::identifier_punctuation(self.opening)
         } else {
-            GrammarProblem::Unexpected(self.opening)
+            GrammarProblem::unexpected(self.opening)
         }
     }
 }
@@ -96,7 +96,7 @@ impl ParsedTypeExpression {
 
     pub(super) fn with_postfix(mut self, question: Option<Spanned<Token<'_>>>) -> Self {
         if let (Ok(_), Some(question)) = (&self.outcome, question) {
-            self.outcome = Err(GrammarProblem::PostfixOptionalType(question.span));
+            self.outcome = Err(GrammarProblem::postfix_optional_type(question.span));
         }
         self
     }
@@ -113,7 +113,7 @@ impl ParsedTypeExpression {
                 joined_to_type: u32::try_from(syntax.opening.start)
                     .is_ok_and(|opening| source_end == opening),
             });
-            self.outcome = Err(GrammarProblem::PostfixArrayType(syntax.brackets));
+            self.outcome = Err(GrammarProblem::postfix_array_type(syntax.brackets));
         }
         self
     }

@@ -36,8 +36,8 @@ fn header_parser<'tokens, 'src: 'tokens>()
             let state = &context.state().0;
             let problem = state
                 .inline_whitespace_between(name.span, extra.span)
-                .map_or(GrammarProblem::Unexpected(extra.span), |gap| {
-                    GrammarProblem::IdentifierWhitespace(gap)
+                .map_or(GrammarProblem::unexpected(extra.span), |gap| {
+                    GrammarProblem::identifier_whitespace(gap)
                 });
             ParsedTableHeader {
                 name,
@@ -80,7 +80,7 @@ pub(super) fn parser<'tokens, 'src: 'tokens>()
         .ignore_then(integer())
         .then(schema_type())
         .then(body_parser())
-        .map(|((name, _), _)| Some(GrammarProblem::IdentifierStartsWithDigit(name.span)));
+        .map(|((name, _), _)| Some(GrammarProblem::identifier_starts_with_digit(name.span)));
 
     // Consume the complete marked type-expression shape before the general
     // compound branch can absorb the following schema mode. For
@@ -104,7 +104,7 @@ pub(super) fn parser<'tokens, 'src: 'tokens>()
         .ignore_then(ident())
         .then(ident())
         .then(body_parser())
-        .map(|((_, unexpected), _)| Some(GrammarProblem::Unexpected(unexpected.span)));
+        .map(|((_, unexpected), _)| Some(GrammarProblem::unexpected(unexpected.span)));
 
     let table = just(Token::Table)
         .ignore_then(header_parser())

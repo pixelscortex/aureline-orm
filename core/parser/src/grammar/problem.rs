@@ -14,35 +14,77 @@ use chumsky::{error::Cheap, prelude::SimpleSpan};
 use crate::{IdentifierProblem, SyntaxProblem, problem::source_span};
 
 #[derive(Clone, Copy)]
-pub(super) enum GrammarProblem {
-    IdentifierWhitespace(SimpleSpan),
-    IdentifierStartsWithDigit(SimpleSpan),
-    IdentifierPunctuation(SimpleSpan),
-    EmptyTypeArguments(SimpleSpan),
-    TrailingTypeArgumentComma(SimpleSpan),
-    PostfixOptionalType(SimpleSpan),
-    MissingUnionMember(SimpleSpan),
-    MissingTupleMember(SimpleSpan),
-    MissingTupleSeparator(SimpleSpan),
-    PostfixArrayType(SimpleSpan),
-    Unexpected(SimpleSpan),
+pub(super) struct GrammarProblem {
+    kind: GrammarProblemKind,
+    span: SimpleSpan,
+}
+
+#[derive(Clone, Copy)]
+enum GrammarProblemKind {
+    IdentifierWhitespace,
+    IdentifierStartsWithDigit,
+    IdentifierPunctuation,
+    EmptyTypeArguments,
+    TrailingTypeArgumentComma,
+    PostfixOptionalType,
+    MissingUnionMember,
+    MissingTupleMember,
+    MissingTupleSeparator,
+    PostfixArrayType,
+    Unexpected,
 }
 
 impl GrammarProblem {
+    pub(super) const fn identifier_whitespace(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::IdentifierWhitespace, span)
+    }
+
+    pub(super) const fn identifier_starts_with_digit(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::IdentifierStartsWithDigit, span)
+    }
+
+    pub(super) const fn identifier_punctuation(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::IdentifierPunctuation, span)
+    }
+
+    pub(super) const fn empty_type_arguments(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::EmptyTypeArguments, span)
+    }
+
+    pub(super) const fn trailing_type_argument_comma(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::TrailingTypeArgumentComma, span)
+    }
+
+    pub(super) const fn postfix_optional_type(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::PostfixOptionalType, span)
+    }
+
+    pub(super) const fn missing_union_member(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::MissingUnionMember, span)
+    }
+
+    pub(super) const fn missing_tuple_member(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::MissingTupleMember, span)
+    }
+
+    pub(super) const fn missing_tuple_separator(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::MissingTupleSeparator, span)
+    }
+
+    pub(super) const fn postfix_array_type(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::PostfixArrayType, span)
+    }
+
+    pub(super) const fn unexpected(span: SimpleSpan) -> Self {
+        Self::new(GrammarProblemKind::Unexpected, span)
+    }
+
+    const fn new(kind: GrammarProblemKind, span: SimpleSpan) -> Self {
+        Self { kind, span }
+    }
+
     pub(super) const fn span(self) -> SimpleSpan {
-        match self {
-            Self::IdentifierWhitespace(span)
-            | Self::IdentifierStartsWithDigit(span)
-            | Self::IdentifierPunctuation(span)
-            | Self::EmptyTypeArguments(span)
-            | Self::TrailingTypeArgumentComma(span)
-            | Self::PostfixOptionalType(span)
-            | Self::MissingUnionMember(span)
-            | Self::MissingTupleMember(span)
-            | Self::MissingTupleSeparator(span)
-            | Self::PostfixArrayType(span)
-            | Self::Unexpected(span) => span,
-        }
+        self.span
     }
 }
 
@@ -67,28 +109,32 @@ impl ParseTokensError {
 
 impl GrammarProblem {
     fn into_syntax_problem(self, source: SourceId) -> SyntaxProblem {
-        let span = source_span(source, self.span());
-        match self {
-            Self::IdentifierWhitespace(_) => SyntaxProblem::InvalidIdentifier {
+        let span = source_span(source, self.span);
+        match self.kind {
+            GrammarProblemKind::IdentifierWhitespace => SyntaxProblem::InvalidIdentifier {
                 problem: IdentifierProblem::ContainsWhitespace,
                 span,
             },
-            Self::IdentifierStartsWithDigit(_) => SyntaxProblem::InvalidIdentifier {
+            GrammarProblemKind::IdentifierStartsWithDigit => SyntaxProblem::InvalidIdentifier {
                 problem: IdentifierProblem::StartsWithDigit,
                 span,
             },
-            Self::IdentifierPunctuation(_) => SyntaxProblem::InvalidIdentifier {
+            GrammarProblemKind::IdentifierPunctuation => SyntaxProblem::InvalidIdentifier {
                 problem: IdentifierProblem::ContainsPunctuation,
                 span,
             },
-            Self::EmptyTypeArguments(_) => SyntaxProblem::EmptyTypeArguments { span },
-            Self::TrailingTypeArgumentComma(_) => SyntaxProblem::TrailingTypeArgumentComma { span },
-            Self::PostfixOptionalType(_) => SyntaxProblem::PostfixOptionalType { span },
-            Self::MissingUnionMember(_) => SyntaxProblem::MissingUnionMember { span },
-            Self::MissingTupleMember(_) => SyntaxProblem::MissingTupleMember { span },
-            Self::MissingTupleSeparator(_) => SyntaxProblem::MissingTupleSeparator { span },
-            Self::PostfixArrayType(_) => SyntaxProblem::PostfixArrayType { span },
-            Self::Unexpected(_) => SyntaxProblem::UnexpectedToken { span },
+            GrammarProblemKind::EmptyTypeArguments => SyntaxProblem::EmptyTypeArguments { span },
+            GrammarProblemKind::TrailingTypeArgumentComma => {
+                SyntaxProblem::TrailingTypeArgumentComma { span }
+            }
+            GrammarProblemKind::PostfixOptionalType => SyntaxProblem::PostfixOptionalType { span },
+            GrammarProblemKind::MissingUnionMember => SyntaxProblem::MissingUnionMember { span },
+            GrammarProblemKind::MissingTupleMember => SyntaxProblem::MissingTupleMember { span },
+            GrammarProblemKind::MissingTupleSeparator => {
+                SyntaxProblem::MissingTupleSeparator { span }
+            }
+            GrammarProblemKind::PostfixArrayType => SyntaxProblem::PostfixArrayType { span },
+            GrammarProblemKind::Unexpected => SyntaxProblem::UnexpectedToken { span },
         }
     }
 }

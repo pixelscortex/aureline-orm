@@ -19,12 +19,8 @@ use super::{
         state::{ParserExtra, ParserState, TokenInput},
     },
     parsed::ParsedTypeExpression,
+    sequence::{self, SequenceItem, SequenceShapeProblem},
 };
-
-enum UnionItem {
-    Member(Spanned<ParsedTypeExpression>),
-    Pipe(SimpleSpan),
-}
 
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     member: P,
@@ -34,10 +30,10 @@ where
         + Clone
         + 'tokens,
 {
-    let member_item = member.clone().spanned().map(UnionItem::Member);
+    let member_item = member.clone().spanned().map(SequenceItem::Member);
     let pipe = just(Token::Pipe)
         .spanned()
-        .map(|pipe: Spanned<Token<'src>>| UnionItem::Pipe(pipe.span));
+        .map(|pipe: Spanned<Token<'src>>| SequenceItem::Separator(pipe.span));
 
     // A leading pipe claims the following member, when present, so `| A`
     // remains one recoverable union rather than leaving `A` for an outer rule.
@@ -51,7 +47,7 @@ where
         .then(member.clone().spanned().or_not())
         .map(|(pipe, member)| {
             std::iter::once(pipe)
-                .chain(member.map(UnionItem::Member))
+                .chain(member.map(SequenceItem::Member))
                 .collect::<Vec<_>>()
         });
 
@@ -67,25 +63,34 @@ where
 }
 
 fn classify(
-    items: Vec<UnionItem>,
+    items: Vec<SequenceItem<ParsedTypeExpression>>,
     union_span: SimpleSpan,
     state: &ParserState,
 ) -> ParsedTypeExpression {
-    let mut problems = shape_problems(&items);
+    let mut problems = sequence::shape_problems(&items)
+        .into_iter()
+        .map(|problem| match problem {
+            SequenceShapeProblem::MissingMember(span)
+            | SequenceShapeProblem::TrailingSeparator(span) => {
+                GrammarProblem::missing_union_member(span)
+            }
+            SequenceShapeProblem::MissingSeparator(span) => GrammarProblem::unexpected(span),
+        })
+        .collect::<Vec<_>>();
     problems.extend(items.iter().filter_map(|item| match item {
-        UnionItem::Member(member) => member.inner.problem(),
-        UnionItem::Pipe(_) => None,
+        SequenceItem::Member(member) => member.inner.problem(),
+        SequenceItem::Separator(_) => None,
     }));
 
     if items
         .iter()
-        .all(|item| matches!(item, UnionItem::Member(_)))
+        .all(|item| matches!(item, SequenceItem::Member(_)))
     {
         return items
             .into_iter()
             .find_map(|item| match item {
-                UnionItem::Member(member) => Some(member.inner),
-                UnionItem::Pipe(_) => None,
+                SequenceItem::Member(member) => Some(member.inner),
+                SequenceItem::Separator(_) => None,
             })
             .expect("a union parser consumes one member");
     }
@@ -98,11 +103,11 @@ fn classify(
     }
 
     let mut members = items.into_iter().filter_map(|item| match item {
-        UnionItem::Member(member) => Some(match member.inner.into_result() {
+        SequenceItem::Member(member) => Some(match member.inner.into_result() {
             Ok(member) => member,
             Err(_) => unreachable!("member problems were classified above"),
         }),
-        UnionItem::Pipe(_) => None,
+        SequenceItem::Separator(_) => None,
     });
     let first = members.next().expect("a union has a first member");
     let second = members.next().expect("a union has a second member");
@@ -112,24 +117,4 @@ fn classify(
         members.collect(),
         state.source_span(union_span),
     ))
-}
-
-fn shape_problems(items: &[UnionItem]) -> Vec<GrammarProblem> {
-    items
-        .iter()
-        .enumerate()
-        .filter_map(|(index, item)| match item {
-            // `| A` and `|` have no member on the left.
-            UnionItem::Pipe(span) if index == 0 => Some(GrammarProblem::MissingUnionMember(*span)),
-            // `A | | B` has no member between the two pipes.
-            UnionItem::Pipe(span) if matches!(items[index - 1], UnionItem::Pipe(_)) => {
-                Some(GrammarProblem::MissingUnionMember(*span))
-            }
-            // `A |` has no member on the right.
-            UnionItem::Pipe(span) if index + 1 == items.len() => {
-                Some(GrammarProblem::MissingUnionMember(*span))
-            }
-            UnionItem::Pipe(_) | UnionItem::Member(_) => None,
-        })
-        .collect()
 }

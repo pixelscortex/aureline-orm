@@ -24,12 +24,8 @@ use super::{
         state::{ParserExtra, ParserState, TokenInput},
     },
     parsed::{ParsedTypeArgument, ParsedTypeExpression},
+    sequence::{self, SequenceItem, SequenceShapeProblem},
 };
-
-enum ApplicationItem {
-    Argument(Spanned<ParsedTypeArgument>),
-    Comma(SimpleSpan),
-}
 
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
@@ -46,10 +42,10 @@ where
     ))
     .boxed();
     let item = choice((
-        argument.spanned().map(ApplicationItem::Argument),
+        argument.spanned().map(SequenceItem::Member),
         just(Token::Comma)
             .spanned()
-            .map(|comma: Spanned<Token<'src>>| ApplicationItem::Comma(comma.span)),
+            .map(|comma: Spanned<Token<'src>>| SequenceItem::Separator(comma.span)),
     ))
     .boxed();
 
@@ -74,17 +70,28 @@ where
 fn classify(
     name: Spanned<String>,
     opening: SimpleSpan,
-    items: Vec<ApplicationItem>,
+    items: Vec<SequenceItem<ParsedTypeArgument>>,
     application_span: SimpleSpan,
     state: &ParserState,
 ) -> ParsedTypeExpression {
-    if let Some(problem) = malformed_shape(&items) {
-        return ParsedTypeExpression::application(Err(problem), name.span, opening);
+    let mut trailing_comma = None;
+    for problem in sequence::shape_problems(&items) {
+        match problem {
+            SequenceShapeProblem::MissingMember(span)
+            | SequenceShapeProblem::MissingSeparator(span) => {
+                return ParsedTypeExpression::application(
+                    Err(GrammarProblem::unexpected(span)),
+                    name.span,
+                    opening,
+                );
+            }
+            SequenceShapeProblem::TrailingSeparator(span) => trailing_comma = Some(span),
+        }
     }
 
     if items.is_empty() {
         return ParsedTypeExpression::application(
-            Err(GrammarProblem::EmptyTypeArguments(SimpleSpan::from(
+            Err(GrammarProblem::empty_type_arguments(SimpleSpan::from(
                 opening.start..application_span.end,
             ))),
             name.span,
@@ -92,13 +99,9 @@ fn classify(
         );
     }
 
-    let trailing_comma = match items.last() {
-        Some(ApplicationItem::Comma(span)) => Some(*span),
-        _ => None,
-    };
     let arguments = items.into_iter().filter_map(|item| match item {
-        ApplicationItem::Argument(argument) => Some(argument.inner),
-        ApplicationItem::Comma(_) => None,
+        SequenceItem::Member(argument) => Some(argument.inner),
+        SequenceItem::Separator(_) => None,
     });
 
     let mut converted = Vec::new();
@@ -113,7 +116,7 @@ fn classify(
 
     if let Some(comma) = trailing_comma {
         return ParsedTypeExpression::application(
-            Err(GrammarProblem::TrailingTypeArgumentComma(comma)),
+            Err(GrammarProblem::trailing_type_argument_comma(comma)),
             name.span,
             opening,
         );
@@ -134,23 +137,4 @@ fn classify(
         name.span,
         opening,
     )
-}
-
-fn malformed_shape(items: &[ApplicationItem]) -> Option<GrammarProblem> {
-    for (index, item) in items.iter().enumerate() {
-        match item {
-            ApplicationItem::Comma(span)
-                if index == 0 || matches!(items[index - 1], ApplicationItem::Comma(_)) =>
-            {
-                return Some(GrammarProblem::Unexpected(*span));
-            }
-            ApplicationItem::Argument(argument)
-                if index > 0 && matches!(items[index - 1], ApplicationItem::Argument(_)) =>
-            {
-                return Some(GrammarProblem::Unexpected(argument.span));
-            }
-            ApplicationItem::Argument(_) | ApplicationItem::Comma(_) => {}
-        }
-    }
-    None
 }

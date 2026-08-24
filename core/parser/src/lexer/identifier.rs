@@ -1,10 +1,10 @@
 //! Recognizes bare identifier candidates and reports their first bad character.
 //!
 //! Aureline bare identifiers follow `[A-Za-z_][A-Za-z0-9_]*`. This module scans
-//! a wider *identifier-shaped candidate* first, then classifies it. Scanning the
-//! wider candidate prevents a malformed spelling such as `User-é` from being
-//! split into an apparently valid `User` followed by an unrelated token error;
-//! the result is the more useful first violation, `-`.
+//! a wider *identifier-shaped candidate* first, then classifies it. A candidate
+//! must contain an identifier atom, but invalid punctuation may precede that
+//! atom. Scanning the wider shape prevents `.User` or `User-é` from becoming
+//! unrelated token errors; the result identifies the first bad byte.
 //!
 //! Structural type punctuation is intentionally not part of a candidate. The
 //! lexer must tokenize `array<string>`, `[A, B]`, `A | B`, and `string?` before
@@ -30,13 +30,21 @@ pub(super) fn candidate<'src>()
         ))
     };
 
-    identifier_atom()
-        .then(
-            internal_punctuation()
-                .repeated()
-                .then(identifier_atom())
-                .repeated(),
-        )
+    let trailing_atoms = || {
+        internal_punctuation()
+            .repeated()
+            .then(identifier_atom())
+            .repeated()
+    };
+    let ordinary = identifier_atom().then(trailing_atoms()).ignored();
+    let leading_punctuation = internal_punctuation()
+        .repeated()
+        .at_least(1)
+        .then(identifier_atom())
+        .then(trailing_atoms())
+        .ignored();
+
+    choice((leading_punctuation, ordinary))
         .to_slice()
         .map_with(|candidate: &'src str, context| {
             vec![identifier_occurrence(candidate, context.span())]

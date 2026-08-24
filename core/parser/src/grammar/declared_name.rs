@@ -12,7 +12,7 @@
 //! The same `<`, `>`, `[`, `]`, `,`, `?`, and `|` tokens therefore reach the
 //! grammar. This module is called only from declared-name positions and
 //! reinterprets a structural token as
-//! [`GrammarProblem::IdentifierPunctuation`]. Moving this decision into the
+//! [`GrammarProblem::identifier_punctuation`]. Moving this decision into the
 //! lexer would either reject valid type expressions or require the lexer to
 //! understand table/field grammar.
 //!
@@ -64,7 +64,7 @@ pub(super) struct PunctuatedIdentifier {
 
 impl PunctuatedIdentifier {
     pub(super) const fn into_problem(self) -> GrammarProblem {
-        GrammarProblem::IdentifierPunctuation(self.span)
+        GrammarProblem::identifier_punctuation(self.span)
     }
 }
 

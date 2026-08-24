@@ -23,12 +23,8 @@ use super::{
         state::{ParserExtra, ParserState, TokenInput},
     },
     parsed::ParsedTypeExpression,
+    sequence::{self, SequenceItem, SequenceShapeProblem},
 };
-
-enum TupleItem {
-    Member(Spanned<ParsedTypeExpression>),
-    Comma(SimpleSpan),
-}
 
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
@@ -43,8 +39,8 @@ where
     let item = choice((
         just(Token::Comma)
             .spanned()
-            .map(|comma: Spanned<Token<'src>>| TupleItem::Comma(comma.span)),
-        type_expression.spanned().map(TupleItem::Member),
+            .map(|comma: Spanned<Token<'src>>| SequenceItem::Separator(comma.span)),
+        type_expression.spanned().map(SequenceItem::Member),
     ))
     .boxed();
 
@@ -55,15 +51,27 @@ where
 }
 
 fn classify(
-    items: Vec<TupleItem>,
+    items: Vec<SequenceItem<ParsedTypeExpression>>,
     tuple_span: SimpleSpan,
     state: &ParserState,
 ) -> ParsedTypeExpression {
-    let mut problems = shape_problems(&items);
+    let mut problems = sequence::shape_problems(&items)
+        .into_iter()
+        .filter_map(|problem| match problem {
+            SequenceShapeProblem::MissingMember(span) => {
+                Some(GrammarProblem::missing_tuple_member(span))
+            }
+            SequenceShapeProblem::MissingSeparator(span) => {
+                Some(GrammarProblem::missing_tuple_separator(span))
+            }
+            // One trailing comma is valid tuple syntax.
+            SequenceShapeProblem::TrailingSeparator(_) => None,
+        })
+        .collect::<Vec<_>>();
     let mut members = Vec::new();
 
     for item in items {
-        if let TupleItem::Member(member) = item {
+        if let SequenceItem::Member(member) = item {
             match member.inner.into_result() {
                 Ok(member) => members.push(member),
                 Err(problem) => problems.push(problem),
@@ -80,30 +88,4 @@ fn classify(
             ParsedTypeExpression::valid(SourceType::tuple(members, state.source_span(tuple_span)))
         }
     }
-}
-
-fn shape_problems(items: &[TupleItem]) -> Vec<GrammarProblem> {
-    items
-        .iter()
-        .enumerate()
-        .filter_map(|(index, item)| match item {
-            // `[, A]`, `[,]`, and `[,,,]` report the first comma without a
-            // member on its left, matching the existing public contract.
-            TupleItem::Comma(span) if index == 0 => Some(GrammarProblem::MissingTupleMember(*span)),
-            // `[A,, B]` reports the second comma because no member occurs
-            // between the two commas.
-            TupleItem::Comma(span) if matches!(items[index - 1], TupleItem::Comma(_)) => {
-                Some(GrammarProblem::MissingTupleMember(*span))
-            }
-            // `[A B]` reports the complete second member as the missing
-            // separator's span.
-            TupleItem::Member(member)
-                if index > 0 && matches!(items[index - 1], TupleItem::Member(_)) =>
-            {
-                Some(GrammarProblem::MissingTupleSeparator(member.span))
-            }
-            // One trailing comma is valid tuple syntax.
-            TupleItem::Comma(_) | TupleItem::Member(_) => None,
-        })
-        .collect()
 }

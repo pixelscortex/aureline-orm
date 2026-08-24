@@ -29,6 +29,7 @@
 mod application;
 mod name;
 mod parsed;
+mod sequence;
 mod tuple;
 mod union;
 mod unsupported_postfix;

@@ -868,6 +868,40 @@ fn identifier_punctuation_reports_its_specific_boundary() {
     }
 }
 
+#[test]
+fn identifier_cannot_start_with_punctuation() {
+    for (source, problem) in [
+        ("table .User schemafull {}", IdentifierProblem::ContainsDot),
+        (
+            "table -User schemafull {}",
+            IdentifierProblem::ContainsHyphen,
+        ),
+        (
+            "table @User schemafull {}",
+            IdentifierProblem::ContainsPunctuation,
+        ),
+    ] {
+        assert_invalid_identifier(source, problem, span(SourceId::new(0), 6, 7));
+    }
+
+    for (source, problem) in [
+        (
+            "table User schemafull { .name string }",
+            IdentifierProblem::ContainsDot,
+        ),
+        (
+            "table User schemafull { -name string }",
+            IdentifierProblem::ContainsHyphen,
+        ),
+        (
+            "table User schemafull { @name string }",
+            IdentifierProblem::ContainsPunctuation,
+        ),
+    ] {
+        assert_invalid_identifier(source, problem, span(SourceId::new(0), 24, 25));
+    }
+}
+
 fn assert_invalid_identifier(source: &str, problem: IdentifierProblem, location: SourceSpan) {
     let errors = aureline_parser::parse(source)
         .expect_err("the public parser should reject the invalid identifier");
@@ -910,16 +944,22 @@ fn table_identifier_cannot_contain_whitespace() {
 
 #[test]
 fn field_identifier_cannot_contain_whitespace() {
-    let errors = aureline_parser::parse("table User schemafull { first name string }")
-        .expect_err("a field identifier cannot contain whitespace");
+    for source in [
+        "table User schemafull { first name string }",
+        "table User schemafull { first name array<string> }",
+        "table User schemafull { first name [string] }",
+    ] {
+        let errors = aureline_parser::parse(source)
+            .expect_err("a field identifier cannot contain whitespace");
 
-    assert_eq!(
-        errors,
-        vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsWhitespace,
-            span: span(SourceId::new(0), 29, 30),
-        }]
-    );
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::InvalidIdentifier {
+                problem: IdentifierProblem::ContainsWhitespace,
+                span: span(SourceId::new(0), 29, 30),
+            }]
+        );
+    }
 }
 
 #[test]
