@@ -1,0 +1,46 @@
+core/parser/src/grammar/table.rs
+  s_830696f25265b0::t_b31825e38f5f3b 39-40,83,107
+core/parser/src/grammar/type_expression/tuple.rs
+  s_830696f25265b0::t_4b2284ce267657 26,42-43,54,58-70,74
+core/parser/src/lexer/identifier.rs
+  s_830696f25265b0::t_c732c16bdfe2db 4-7,33-47
+testing/contract/tests/parser.rs
+  s_830696f25265b0::t_fb043ab4921933 871-901
+  s_830696f25265b0::t_2f4ed627b0f12c 902,947-953,955-962
+  s_830696f25265b0::t_b83d602e6c03c4 903-904
+core/parser/src/grammar/type_expression/application.rs
+  s_830696f25265b0::t_4b2284ce267657 27,45,48,73,77-89,94,103-104,119
+core/parser/src/grammar/type_expression/union.rs
+  s_830696f25265b0::t_4b2284ce267657 22,33,36,66,70-79,81-82,87,92-93,106,110
+  s_830696f25265b0::t_c732c16bdfe2db 50
+core/parser/src/grammar/problem.rs
+  s_830696f25265b0::t_b31825e38f5f3b 17-34,38-85,87,112-114,118,122,126-137
+core/parser/src/grammar/type_expression/sequence.rs
+  s_830696f25265b0::t_643229ffd262a9 27
+  s_830696f25265b0::t_4b2284ce267657 1-26,28-42
+core/parser/src/grammar/type_expression/parsed.rs
+  s_830696f25265b0::t_b31825e38f5f3b 30,32,46,48,99,116
+core/parser/src/grammar/field.rs
+  s_830696f25265b0::t_643229ffd262a9 12,108
+  s_830696f25265b0::t_33417b0027bcad 43-50,54,69-82,87-92,99,104
+core/parser/src/grammar/declared_name.rs
+  s_830696f25265b0::t_b31825e38f5f3b 15,67
+core/parser/src/grammar/type_expression/mod.rs
+  s_830696f25265b0::t_4b2284ce267657 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "67bdeae44299b76e33cc2786be2d7d1e5755b1a6",
+  "prompts": {},
+  "sessions": {
+    "s_830696f25265b0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0274a-91d6-7d91-a664-af46582db11c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
