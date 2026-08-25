@@ -17,10 +17,6 @@
 //!    position. Only a problem-free table allocates its fields, so rejected input
 //!    never leaves a partial table in the AST.
 //!
-//! Split-name recovery also consults inline-whitespace spans retained by the
-//! lexer. Token spans alone cannot distinguish whitespace from a removed comment,
-//! and only whitespace makes `first name string` an identifier-boundary problem.
-//!
 //! Representative flows:
 //!
 //! ```text
@@ -29,8 +25,7 @@
 //!   -> FieldDecl after the surrounding table commits
 //!
 //! first name string
-//!   -> split-name recovery at the whitespace between `first` and `name`
-//!   -> FieldOutcome::Problem(IdentifierWhitespace)
+//!   -> `first` is the name and `name` is unexpected after its type slot
 //!   -> no FieldDecl allocation
 //! ```
 //!
@@ -43,7 +38,7 @@ use aureline_ast::{TableFieldBuilder, ast::SourceType, source::SourceSpan, token
 use chumsky::prelude::*;
 
 use super::{
-    declared_name,
+    atom::{ident, integer},
     problem::GrammarProblem,
     state::{ParserExtra, TokenInput},
     type_expression,
@@ -96,14 +91,10 @@ pub(super) fn parser<'tokens, 'src: 'tokens>()
             .rewind()
     };
 
-    // Supplying type + boundary as the declared-name tail lets the shared name
-    // parser distinguish `owner record<User>` from `first name string`.
-    let following_name = type_expression::parser().then_ignore(field_end()).boxed();
-
-    declared_name::parser(following_name).map_with(|declared_name, context| match declared_name {
-        Ok(declared_name) => {
-            let name = declared_name.name;
-            let source_type = declared_name.following;
+    let named = ident()
+        .then(type_expression::parser())
+        .then_ignore(field_end())
+        .map_with(|(name, source_type), context| {
             let field_span = context.span();
             let state = &context.state().0;
             match source_type.into_result() {
@@ -115,7 +106,14 @@ pub(super) fn parser<'tokens, 'src: 'tokens>()
                 }),
                 Err(problem) => FieldOutcome::Problem(problem),
             }
-        }
-        Err(problem) => FieldOutcome::Problem(problem),
-    })
+        });
+
+    let integer_name = integer()
+        .then(type_expression::parser())
+        .then_ignore(field_end())
+        .map_with(|(name, _), _| {
+            FieldOutcome::Problem(GrammarProblem::identifier_starts_with_digit(name.span))
+        });
+
+    choice((integer_name, named))
 }

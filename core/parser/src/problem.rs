@@ -41,11 +41,6 @@ pub enum IdentifierProblem {
     /// punctuation such as `User?Name` or `array<string>` in a declared-name
     /// slot. The problem span identifies the first violation.
     ContainsPunctuation,
-    /// An identifier contained inline whitespace.
-    ///
-    /// Triggers: `table User Profile schemafull {}` and the field declaration
-    /// `first name string`. The span covers the spaces/tabs that split the name.
-    ContainsWhitespace,
     /// A name used backticks, which Aureline reserves rather than accepting as
     /// identifier escaping.
     ///
@@ -84,11 +79,6 @@ pub enum SyntaxProblem {
     ///
     /// Trigger: `array<string,>`.
     TrailingTypeArgumentComma { span: SourceSpan },
-    /// A type used postfix `?`; `span` covers `?`. Optional types use
-    /// `option<T>`.
-    ///
-    /// Trigger: `string?`.
-    PostfixOptionalType { span: SourceSpan },
     /// A union pipe was missing a member on at least one side; `span` covers the
     /// offending `|`.
     ///
@@ -103,10 +93,6 @@ pub enum SyntaxProblem {
     /// Triggers include `[int string]`, `[int record<A>]`, and
     /// `[int [string]]`. The span covers the complete first adjacent member.
     MissingTupleSeparator { span: SourceSpan },
-    /// A type used postfix `[]`; `span` covers `[]`. Array types use `array<T>`.
-    ///
-    /// Trigger: `string[]`.
-    PostfixArrayType { span: SourceSpan },
     /// A block comment reached the end of input; `span` points at its opening
     /// delimiter.
     ///

@@ -6,13 +6,12 @@
 //!    occurrence can be a grammatical token, a comment, an inline-whitespace
 //!    run, or a typed lexical problem.
 //! 2. [`lex`] partitions those occurrences into [`LexedSource`]. The grammar
-//!    receives only `tokens`, while comments become AST data and whitespace
-//!    spans remain available to contextual name recovery.
+//!    receives only `tokens`, while comments become AST data.
 //!
 //! Keeping those channels separate is deliberate. Comments do not affect the
 //! grammar, but callers still need their exact source locations. Spaces and
-//! tabs usually do not affect the grammar either, but they remain available
-//! for diagnostics such as split declaration names.
+//! tabs usually do not affect the grammar either, and are discarded after
+//! lexing.
 //!
 //! This module recognizes characters, not their grammatical role. In
 //! particular, `<`, `>`, `[`, `]`, `,`, `?`, and `|` are always ordinary
@@ -24,8 +23,8 @@
 //! User | Bot
 //! ```
 //!
-//! The grammar's `declared_name` module decides whether those same tokens
-//! violate a table or field name when they occur in a declared-name slot.
+//! Declaration parsers decide whether those same tokens are valid in their
+//! current grammar slot.
 
 mod comment;
 mod identifier;
@@ -56,7 +55,6 @@ pub(super) enum Lexeme<'src> {
 pub(crate) struct LexedSource<'src> {
     pub(super) tokens: Vec<TokenOccurrence<'src>>,
     pub(super) comments: Vec<Comment>,
-    pub(super) inline_whitespace: Vec<SimpleSpan>,
     pub(super) source: SourceId,
     pub(super) source_len: usize,
 }
@@ -82,7 +80,6 @@ pub(crate) fn lex(
 
     let mut tokens = Vec::new();
     let mut comments = Vec::new();
-    let mut inline_whitespace = Vec::new();
     for Spanned { inner, span } in occurrences {
         match inner {
             Lexeme::InvalidIdentifier(problem) => {
@@ -94,7 +91,7 @@ pub(crate) fn lex(
             Lexeme::Comment(kind) => {
                 comments.push(Comment::new(kind, source_span(source_id, span)));
             }
-            Lexeme::InlineWhitespace => inline_whitespace.push(span),
+            Lexeme::InlineWhitespace => {}
             Lexeme::UnterminatedBlockComment => {
                 let opening = SimpleSpan::from(span.start..span.start + 2);
                 return Err(vec![SyntaxProblem::UnterminatedBlockComment {
@@ -108,7 +105,6 @@ pub(crate) fn lex(
     Ok(LexedSource {
         tokens,
         comments,
-        inline_whitespace,
         source: source_id,
         source_len: source.len(),
     })

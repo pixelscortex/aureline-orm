@@ -21,33 +21,18 @@ pub(super) type TokenInput<'tokens, 'src> =
 pub(super) struct ParserState {
     ast: AstBuilder,
     source: SourceId,
-    inline_whitespace: Vec<SimpleSpan>,
 }
 
 impl ParserState {
-    pub(super) fn new(
-        source: SourceId,
-        comments: Vec<Comment>,
-        inline_whitespace: Vec<SimpleSpan>,
-    ) -> Self {
+    pub(super) fn new(source: SourceId, comments: Vec<Comment>) -> Self {
         Self {
             ast: AstBuilder::new(comments),
             source,
-            inline_whitespace,
         }
     }
 
     pub(super) fn source_span(&self, span: SimpleSpan) -> SourceSpan {
         source_span(self.source, span)
-    }
-
-    pub(super) fn inline_whitespace_between(
-        &self,
-        left: SimpleSpan,
-        right: SimpleSpan,
-    ) -> Option<SimpleSpan> {
-        let gap = SimpleSpan::from(left.end..right.start);
-        self.inline_whitespace.contains(&gap).then_some(gap)
     }
 
     pub(super) fn ast_mut(&mut self) -> &mut AstBuilder {

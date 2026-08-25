@@ -34,8 +34,8 @@ pub use problem::{IdentifierProblem, SyntaxProblem};
 
 /// Classifies the grammatical tokens in one source document.
 ///
-/// Comments and inline whitespace are retained internally for parsing but do
-/// not appear in the returned stream. Use [`parse`] when source locations or
+/// Comments are retained internally for parsing but do not appear in the
+/// returned stream. Inline whitespace is layout and is discarded. Use [`parse`] when source locations or
 /// syntax diagnostics beyond lexing are needed.
 ///
 /// # Errors

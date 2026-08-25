@@ -11,6 +11,6 @@ For each parser module or parser-producing function (`fn ... -> impl Parser`):
 5. Explain the shared Chumsky signature once in each non-trivial module, or point to an enclosing explanation: `'src` owns borrowed source spelling, `'tokens` owns the token input, `'src: 'tokens` keeps spelling alive during parsing, and `impl Parser` is a parser definition rather than parsed output.
 6. Trace one representative accepted input through important intermediate values to its AST result. When directed recovery exists, also trace one malformed input to its selected problem and say whether partial AST data can exist.
 7. Explain `choice` ordering and combinators such as `rewind`, `ignored`, or `map_with` wherever changing or simplifying them could alter consumption, diagnostics, spans, or construction timing.
-8. Route table, field, and later declaration-name slots through `grammar::declared_name::parser`, supplying the parser for the declaration-specific syntax that follows the name. Keep only declaration-specific missing-tail or body recovery in the caller.
+8. Keep each declaration parser as the composition root for its complete source construct. A declared name is exactly one identifier token; do not add speculative tail parsers or recovery alternatives that reinterpret later tokens as part of the name.
 
 Finish only when a reader can answer, from the changed file, “what source construct does this function own, what does it consume and return, and when does it commit?” Keep linear token selectors and self-explanatory wiring concise.

@@ -13,6 +13,17 @@
 //! distinguishes valid arguments, the two directed incomplete forms, and
 //! malformed comma/adjacency shapes that retain generic `UnexpectedToken`
 //! behavior.
+//!
+//! A valid `array<float, 3>` becomes a staged application with one recursive
+//! type argument and one integer argument. `array<>` consumes both angle
+//! brackets and returns `EmptyTypeArguments`; `array<string,>` consumes the
+//! closing bracket and returns `TrailingTypeArgumentComma`. No form allocates
+//! into the AST here.
+//!
+//! In the parser signature, `P` is the complete recursive type parser supplied
+//! by the composition root. `'src` owns borrowed token spellings and `'tokens`
+//! owns the input slice; `impl Parser` describes the parser rather than a parsed
+//! application.
 
 use aureline_ast::{ast::SourceType, tokens::Token};
 use chumsky::prelude::*;
@@ -27,6 +38,12 @@ use super::{
     sequence::{self, SequenceItem, SequenceShapeProblem},
 };
 
+/// Parses `<name><<arguments>>` as one valid-or-recovered type application.
+///
+/// The consumed region includes the unresolved name and both angle brackets.
+/// Each item is first staged as either an argument or comma so [`classify`] can
+/// apply recovery precedence after the whole list is known. The emitted
+/// [`ParsedTypeExpression`] does not mutate parser state or allocate AST nodes.
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
 ) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra>
@@ -67,6 +84,8 @@ where
         })
 }
 
+/// Converts one fully consumed application item list into a source type or its
+/// earliest applicable recovery result.
 fn classify(
     name: Spanned<String>,
     opening: SimpleSpan,
@@ -79,24 +98,16 @@ fn classify(
         match problem {
             SequenceShapeProblem::MissingMember(span)
             | SequenceShapeProblem::MissingSeparator(span) => {
-                return ParsedTypeExpression::application(
-                    Err(GrammarProblem::unexpected(span)),
-                    name.span,
-                    opening,
-                );
+                return ParsedTypeExpression::recovered(GrammarProblem::unexpected(span));
             }
             SequenceShapeProblem::TrailingSeparator(span) => trailing_comma = Some(span),
         }
     }
 
     if items.is_empty() {
-        return ParsedTypeExpression::application(
-            Err(GrammarProblem::empty_type_arguments(SimpleSpan::from(
-                opening.start..application_span.end,
-            ))),
-            name.span,
-            opening,
-        );
+        return ParsedTypeExpression::recovered(GrammarProblem::empty_type_arguments(
+            SimpleSpan::from(opening.start..application_span.end),
+        ));
     }
 
     let arguments = items.into_iter().filter_map(|item| match item {
@@ -109,32 +120,26 @@ fn classify(
         match argument.into_result(state) {
             Ok(argument) => converted.push(argument),
             Err(problem) => {
-                return ParsedTypeExpression::application(Err(problem), name.span, opening);
+                return ParsedTypeExpression::recovered(problem);
             }
         }
     }
 
     if let Some(comma) = trailing_comma {
-        return ParsedTypeExpression::application(
-            Err(GrammarProblem::trailing_type_argument_comma(comma)),
-            name.span,
-            opening,
-        );
+        return ParsedTypeExpression::recovered(GrammarProblem::trailing_type_argument_comma(
+            comma,
+        ));
     }
 
     let mut arguments = converted.into_iter();
     let first_argument = arguments
         .next()
         .expect("a non-empty application has a first argument");
-    ParsedTypeExpression::application(
-        Ok(SourceType::application(
-            name.inner,
-            state.source_span(name.span),
-            first_argument,
-            arguments.collect(),
-            state.source_span(application_span),
-        )),
-        name.span,
-        opening,
-    )
+    ParsedTypeExpression::valid(SourceType::application(
+        name.inner,
+        state.source_span(name.span),
+        first_argument,
+        arguments.collect(),
+        state.source_span(application_span),
+    ))
 }

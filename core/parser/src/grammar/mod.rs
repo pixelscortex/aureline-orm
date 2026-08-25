@@ -14,7 +14,6 @@
 //! unrelated unexpected token. No malformed public AST node is constructed.
 
 mod atom;
-mod declared_name;
 mod document;
 mod field;
 mod problem;
@@ -33,11 +32,10 @@ pub(crate) fn parse(lexed: LexedSource<'_>) -> Result<Ast, Vec<SyntaxProblem>> {
     let LexedSource {
         tokens,
         comments,
-        inline_whitespace,
         source,
         source_len,
     } = lexed;
-    let mut state = extra::SimpleState(ParserState::new(source, comments, inline_whitespace));
+    let mut state = extra::SimpleState(ParserState::new(source, comments));
     let input = tokens.split_spanned(SimpleSpan::from(source_len..source_len));
 
     let parsed = document::parser()
