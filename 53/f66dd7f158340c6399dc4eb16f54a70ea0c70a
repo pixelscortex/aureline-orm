@@ -1,0 +1,69 @@
+core/ast/src/builder.rs
+  s_95d5c5f709f368::t_b3046ffe8d5015 1-7,20
+  s_95d5c5f709f368::t_597b307c6c1964 8-19
+core/wasm/src/lib.rs
+  s_95d5c5f709f368::t_b3046ffe8d5015 17-22
+core/ast/src/ast.rs
+  s_95d5c5f709f368::t_b3046ffe8d5015 1-11,33
+  s_95d5c5f709f368::t_597b307c6c1964 12-32
+core/parser/src/grammar/declared_name.rs
+  s_95d5c5f709f368::t_1f5d70dab7d1b8 90-101
+  s_95d5c5f709f368::t_93f6e3b837a955 31-35,129-132,149-153,176-180,207-212
+  s_95d5c5f709f368::t_18221004cf7b30 23-30,47-89,102-127
+  s_95d5c5f709f368::t_31f7699b69c71f 133
+  s_95d5c5f709f368::t_e020e82f14e41d 166,171,181,213
+  s_95d5c5f709f368::t_9da8b5ba654db0 128
+core/parser/AGENTS.md
+  s_95d5c5f709f368::t_95c32745d68900 1-6,15-16
+  s_95d5c5f709f368::t_e020e82f14e41d 7-14
+.agents/skills/comments-guidelines/SKILL.md
+  s_95d5c5f709f368::t_b3046ffe8d5015 40
+  s_95d5c5f709f368::t_597b307c6c1964 39
+core/parser/src/grammar/field.rs
+  s_95d5c5f709f368::t_1f5d70dab7d1b8 103-106,119
+  s_95d5c5f709f368::t_93f6e3b837a955 36-40,52-56,65,71-74,80-86,89-92,99-100
+  s_95d5c5f709f368::t_b3046ffe8d5015 1,7-8,14-22
+  s_95d5c5f709f368::t_18221004cf7b30 9-13,101-102,118,120
+  s_95d5c5f709f368::t_597b307c6c1964 23-35
+docs/research/parser-composition-and-recovery-prior-art.md
+  s_95d5c5f709f368::t_b331a7d9f795b6 1-231
+core/parser/src/lib.rs
+  s_95d5c5f709f368::t_d6f1b9bc4a3098 13-25
+  s_95d5c5f709f368::t_b3046ffe8d5015 71-73
+core/ast/src/arena.rs
+  s_95d5c5f709f368::t_597b307c6c1964 1-2,5-8,10-19
+  s_95d5c5f709f368::t_0d48b3aa842c27 9
+  s_95d5c5f709f368::t_b3046ffe8d5015 52-54
+  s_95d5c5f709f368::t_d6f1b9bc4a3098 3-4
+.agents/skills/comments-guidelines/references/interfaces-and-mechanisms.md
+  s_95d5c5f709f368::t_b3046ffe8d5015 7,86-116,123-128,132-134
+  s_95d5c5f709f368::t_597b307c6c1964 117-122,129-131
+  s_95d5c5f709f368::t_7683cbe30530ef 135
+core/parser/src/problem.rs
+  s_95d5c5f709f368::t_41b982e6f575b1 49-50
+core/parser/src/grammar/table.rs
+  s_95d5c5f709f368::t_e8fe5e2caeaaeb 17-18
+  s_95d5c5f709f368::t_597b307c6c1964 21-35
+  s_95d5c5f709f368::t_b3046ffe8d5015 14-16,19-20,128-130
+  s_95d5c5f709f368::t_18221004cf7b30 55,62,64-67,73-77,80,131,143-144,155,160
+  s_95d5c5f709f368::t_1f5d70dab7d1b8 68-69,190
+  s_95d5c5f709f368::t_e020e82f14e41d 101,103-107,109,113-114,116-124,147-149,169-170,172-189
+  s_95d5c5f709f368::t_95c32745d68900 36-49,63,71-72,83-89,102
+  s_95d5c5f709f368::t_4cc08586824a0f 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "53f66dd7f158340c6399dc4eb16f54a70ea0c70a",
+  "prompts": {},
+  "sessions": {
+    "s_95d5c5f709f368": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0364a-174a-7171-afd0-d3ed66f6f509",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
