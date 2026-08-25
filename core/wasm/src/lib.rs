@@ -14,8 +14,12 @@ pub fn start() {
 }
 
 #[wasm_bindgen]
-/// Returns the source's grammatical tokens and any lexical problems as a
-/// JavaScript value.
+/// Returns `{ tokens, errors }` as a JavaScript value.
+///
+/// Successful lexing fills `tokens` and leaves `errors` empty. Any lexical
+/// problem leaves `tokens` empty and fills `errors`; partial token streams are
+/// not exposed. Error entries currently use Rust's debug representation and are
+/// not a stable structured diagnostic interface.
 ///
 /// # Errors
 ///

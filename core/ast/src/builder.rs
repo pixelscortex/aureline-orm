@@ -1,3 +1,23 @@
+//! Atomic construction seam for the arena-backed syntax tree.
+//!
+//! [`AstBuilder::alloc_table`] reserves a table identity, lets
+//! [`TableFieldBuilder`] allocate source-ordered fields that already reference
+//! that identity, and then stores the table with those field identities. This is
+//! the only construction path that establishes both ownership edges together;
+//! no incomplete table is exposed for a later pass to repair.
+//!
+//! For `table User schemafull { owner record<User> }`, construction flows as:
+//!
+//! ```text
+//! reserve TableId(0)
+//!   -> allocate FieldId(0) with owner = TableId(0)
+//!   -> store TableDecl(fields = [FieldId(0)]) at TableId(0)
+//!   -> finish SourceFile(tables = [TableId(0)])
+//! ```
+//!
+//! The IDs are illustrative. Their actual values are compilation-local arena
+//! indices, not persistent identities.
+
 use crate::{
     arena::Arena,
     ast::{Ast, Comment, FieldDecl, SchemaType, SourceFile, SourceType, TableDecl},

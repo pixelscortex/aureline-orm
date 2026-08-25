@@ -1,3 +1,36 @@
+//! Arena-backed source syntax produced by the parser's single construction walk.
+//!
+//! [`SourceFile`] preserves table declaration order as [`TableId`] values. Each
+//! [`TableDecl`] preserves its fields in source order as [`FieldId`] values, and
+//! every [`FieldDecl`] carries the owning table ID. [`AstBuilder`](crate::AstBuilder)
+//! establishes both ownership edges atomically; consumers read them here rather
+//! than reconstructing relationships by walking source syntax again.
+//!
+//! Source spans retain exact provenance but do not resolve names or types.
+//! Comments remain a separate source-ordered, semantically inert channel so
+//! source-aware tooling can find them without mixing them into program meaning.
+//!
+//! A source declaration such as:
+//!
+//! ```text
+//! table User schemafull {
+//!     owner record<User | Bot>
+//! }
+//! ```
+//!
+//! has this arena-backed shape (IDs are illustrative and compilation-local):
+//!
+//! ```text
+//! SourceFile.tables = [TableId(0)]
+//! TableId(0) = TableDecl(name = "User", fields = [FieldId(0)])
+//! FieldId(0) = FieldDecl(name = "owner", owner = TableId(0),
+//!                        type = application(record, union(User, Bot)))
+//! ```
+//!
+//! Consumers start at [`Ast::root`], resolve each ID through [`Ast::table`] or
+//! [`Ast::field`], and follow the stored edges. They never infer ownership from
+//! names or source position.
+
 use crate::{
     arena::Arena,
     ids::{FieldId, TableId},

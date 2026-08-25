@@ -1,3 +1,22 @@
+//! Dense, typed storage used by one parsed AST.
+//!
+//! An `Arena<TableId, TableDecl>` conceptually maps the first allocated table to
+//! `TableId(0)`, the second to `TableId(1)`, and so on;
+//! [`Arena::get`] converts the typed ID back to its vector index. The typed ID
+//! prevents accidentally using a [`FieldId`](crate::ids::FieldId) to read the
+//! table arena, while the arena keeps values densely stored in source order.
+//!
+//! `Arena::alloc_with` supports parent/child construction inside this crate:
+//!
+//! ```text
+//! next table slot is 0
+//!   -> pass TableId(0) into the builder closure
+//!   -> closure builds fields whose owner is TableId(0)
+//!   -> store the completed table in slot 0
+//! ```
+//!
+//! The reserved ID never escapes unless the completed value is stored.
+
 use std::marker::PhantomData;
 
 pub trait ArenaId: Copy {
@@ -30,6 +49,9 @@ where
     }
 
     pub(crate) fn alloc_with(&mut self, build: impl FnOnce(Id) -> T) -> Id {
+        // Reserve the next identity before building the value so its children can
+        // record a parent reference during the same atomic construction step. The
+        // value is stored before this ID can escape the call.
         let id = self.next_id();
         self.values.push(build(id));
         id

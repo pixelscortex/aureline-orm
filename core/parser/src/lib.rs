@@ -10,6 +10,19 @@
 //! Type names remain meaning-free at this layer. Parsing `FutureType` succeeds
 //! exactly like parsing `string`; name resolution and type validation belong to
 //! later compilation contexts.
+//!
+//! Representative end-to-end flow:
+//!
+//! ```text
+//! user source:  table User schemafull { owner record<User | Bot> }
+//! lexer:       grammatical tokens + comment/layout spans
+//! grammar:     staged table and field outcomes, or a source-spanned problem
+//! builder:     TableId/FieldId ownership edges and source-order lists
+//! result:      Ast, or SyntaxProblem values with no partial Ast
+//! ```
+//!
+//! Grammar modules document the finer flow for precedence and directed recovery;
+//! AST modules document the committed arena shape.
 
 mod grammar;
 mod lexer;
@@ -55,7 +68,9 @@ pub fn parse(source: &str) -> Result<Ast, Vec<SyntaxProblem>> {
 /// Parses a source document with the identity assigned by its source registry.
 ///
 /// `source_id` is copied into every AST and problem [`aureline_ast::source::SourceSpan`].
-/// Offsets remain UTF-8 byte offsets into `source`.
+/// Offsets remain UTF-8 byte offsets into `source`. This function does not access
+/// or validate a registry: the caller must ensure `source_id` identifies this
+/// exact source text for as long as the returned locations are used.
 ///
 /// # Errors
 ///

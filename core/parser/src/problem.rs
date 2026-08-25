@@ -46,8 +46,8 @@ pub enum IdentifierProblem {
     /// Triggers: `table User Profile schemafull {}` and the field declaration
     /// `first name string`. The span covers the spaces/tabs that split the name.
     ContainsWhitespace,
-    /// A name used backticks reserved for a future embedded-SurrealQL escape
-    /// hatch.
+    /// A name used backticks, which Aureline reserves rather than accepting as
+    /// identifier escaping.
     ///
     /// Trigger: ``table `User` schemafull {}``. The span covers the complete
     /// backtick-delimited spelling.
