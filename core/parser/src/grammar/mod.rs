@@ -1,60 +1,53 @@
+//! Builds the public AST from the lexer's grammatical token stream.
+//!
+//! The grammar has two ways to reject input:
+//!
+//! - an ordinary Chumsky mismatch means the token stream does not match any
+//!   known complete shape and becomes [`SyntaxProblem::UnexpectedToken`];
+//! - a recovery parser consumes a known malformed shape and returns a
+//!   [`problem::GrammarProblem`], which becomes a more specific public problem
+//!   such as [`SyntaxProblem::MissingUnionMember`].
+//!
+//! Recovery values are carried through recursive type parsing rather than
+//! immediately aborting. This is what lets `record<A |>` consume the closing
+//! `>` and report the missing union member at `|` instead of reporting `>` as an
+//! unrelated unexpected token. No malformed public AST node is constructed.
+
+mod atom;
+mod declared_name;
+mod document;
+mod field;
+mod problem;
+mod state;
 mod table;
+mod type_expression;
 
-use aureline_ast::{
-    AstBuilder,
-    ast::{Ast, SchemaType, SourceFile},
-    tokens::Token,
-};
-use chumsky::{error::EmptyErr, extra, prelude::*};
+use aureline_ast::ast::Ast;
+use chumsky::{extra, input::Input as _, prelude::*};
 
-use crate::grammar::table::table_parser;
+use crate::{SyntaxProblem, lexer::LexedSource};
 
-pub(crate) type ParserExtra = extra::State<extra::SimpleState<AstBuilder>>;
+use self::{problem::ParseTokensError, state::ParserState};
 
-pub fn source_file_parser<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, &'tokens [Token<'src>], SourceFile, ParserExtra> {
-    let newlines = just(Token::Newline).repeated();
+pub(crate) fn parse(lexed: LexedSource<'_>) -> Result<Ast, Vec<SyntaxProblem>> {
+    let LexedSource {
+        tokens,
+        comments,
+        inline_whitespace,
+        source,
+        source_len,
+    } = lexed;
+    let mut state = extra::SimpleState(ParserState::new(source, comments, inline_whitespace));
+    let input = tokens.split_spanned(SimpleSpan::from(source_len..source_len));
 
-    let items = table_parser()
-        .then_ignore(newlines.clone())
-        .repeated()
-        .collect::<Vec<_>>();
+    let parsed = document::parser()
+        .parse_with_state(input, &mut state)
+        .into_result()
+        .map_err(ParseTokensError::Parser);
 
-    newlines
-        .ignore_then(items)
-        .then_ignore(end())
-        .map(SourceFile::new)
-}
-
-/// Parses a token stream into an arena-backed AST.
-///
-/// # Errors
-///
-/// Returns parser errors when the token stream does not match the grammar.
-pub fn parse_tokens<'tokens, 'src: 'tokens>(
-    tokens: &'tokens [Token<'src>],
-) -> Result<Ast, Vec<EmptyErr>> {
-    let mut state = extra::SimpleState(AstBuilder::new());
-
-    let root = source_file_parser()
-        .parse_with_state(tokens, &mut state)
-        .into_result()?;
-
-    Ok(state.0.finish(root))
-}
-
-pub(crate) fn ident<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, &'tokens [Token<'src>], String, ParserExtra> {
-    select_ref! {
-        Token::Ident(name) => *name,
+    match parsed {
+        Ok(Some(problem)) => Err(ParseTokensError::Problem(problem).into_syntax_problems(source)),
+        Ok(None) => Ok(state.0.finish()),
+        Err(error) => Err(error.into_syntax_problems(source)),
     }
-    .map(str::to_owned)
-}
-
-pub(crate) fn schema_type_parser<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, &'tokens [Token<'src>], SchemaType, ParserExtra> {
-    choice((
-        just(Token::Schemafull).to(SchemaType::Full),
-        just(Token::Schemaless).to(SchemaType::Less),
-    ))
 }

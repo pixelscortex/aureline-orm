@@ -10,7 +10,7 @@ license.workspace = true
 path = "src/lib.rs"
 
 [features]
-unstable-test-normalization = ["aureline-ast/unstable-test-normalization"]
+contract-serde = ["aureline-ast/contract-serde"]
 
 [dependencies]
 aureline-ast = { path = "../ast" }

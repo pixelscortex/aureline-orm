@@ -1,10 +1,8 @@
-//! Adapts a compiler-stage result into a logical S-expression in three generic
-//! stages: Serde traversal, arena-reference resolution, then S-expression
-//! rendering. Syntax-node dispatch does not belong here; logical constructor
-//! names live with the serializable stage types so adding a node cannot create
-//! a second AST in this test crate.
+//! Adapts a compiler-stage contract view into a logical S-expression through
+//! generic Serde traversal. Logical constructor names live with each stage's
+//! serialization adapter rather than being duplicated in this test crate.
 
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 use serde::{Serialize, ser};
 
@@ -14,7 +12,7 @@ pub(crate) fn normalize(value: &impl Serialize) -> Result<SExpr, String> {
     let value = value
         .serialize(ValueSerializer)
         .map_err(|error| error.to_string())?;
-    Resolver::new(&value)?.resolve_root(&value)
+    render_root(&value)
 }
 
 #[derive(Debug)]
@@ -34,181 +32,56 @@ enum Value {
     },
 }
 
-struct Resolver<'value> {
-    arenas: HashMap<&'value str, &'value [Value]>,
-    resolving: Vec<(&'value str, usize)>,
-}
-
-impl<'value> Resolver<'value> {
-    fn new(value: &'value Value) -> Result<Self, String> {
-        let mut resolver = Self {
-            arenas: HashMap::new(),
-            resolving: Vec::new(),
-        };
-        resolver.collect_arenas(value)?;
-        Ok(resolver)
-    }
-
-    fn collect_arenas(&mut self, value: &'value Value) -> Result<(), String> {
-        match value {
-            Value::Record { name, fields } if name == "$Arena" => {
-                let kind = record_atom(fields, "kind")?;
-                let values = record_sequence(fields, "values")?;
-                if self.arenas.insert(kind, values).is_some() {
-                    return Err(format!("duplicate arena kind `{kind}`"));
-                }
-                for value in values {
-                    self.collect_arenas(value)?;
-                }
-            }
-            Value::Option(Some(value)) => self.collect_arenas(value)?,
-            Value::Option(None) | Value::Unit | Value::Atom(_) => {}
-            Value::Sequence(values) => {
-                for value in values {
-                    self.collect_arenas(value)?;
-                }
-            }
-            Value::Map(entries) => {
-                for (key, value) in entries {
-                    self.collect_arenas(key)?;
-                    self.collect_arenas(value)?;
-                }
-            }
-            Value::Record { fields, .. } => {
-                for (_, value) in fields {
-                    self.collect_arenas(value)?;
-                }
-            }
-            Value::Variant { fields, .. } => {
-                for (_, value) in fields {
-                    self.collect_arenas(value)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn resolve_root(&mut self, value: &'value Value) -> Result<SExpr, String> {
-        let expressions = self.fragments(value)?;
-        match expressions.as_slice() {
-            [expression] => Ok(expression.clone()),
-            [] => Err("normalization produced no logical value".to_owned()),
-            _ => Err("normalization produced more than one logical root".to_owned()),
-        }
-    }
-
-    fn fragments(&mut self, value: &'value Value) -> Result<Vec<SExpr>, String> {
-        match value {
-            Value::Unit | Value::Option(None) => Ok(Vec::new()),
-            Value::Atom(atom) => Ok(vec![SExpr::Atom(atom.clone())]),
-            Value::Option(Some(value)) => self.fragments(value),
-            Value::Sequence(values) => self.sequence_fragments(values),
-            Value::Map(entries) => {
-                let mut items = vec![SExpr::Atom("Map".to_owned())];
-                for (key, value) in entries {
-                    let mut pair = self.fragments(key)?;
-                    pair.extend(self.fragments(value)?);
-                    items.push(SExpr::List(pair));
-                }
-                Ok(vec![SExpr::List(items)])
-            }
-            Value::Record { name, fields } if name == "$Arena" => Ok(Vec::new()),
-            Value::Record { name, fields } if name == "$Ref" => self.resolve_reference(fields),
-            Value::Record { fields, .. } if field(fields, "$root").is_some() => {
-                self.fragments(field(fields, "$root").expect("root field exists"))
-            }
-            Value::Record { name, fields } => {
-                let mut items = vec![SExpr::Atom(name.clone())];
-                for (_, field) in fields {
-                    items.extend(self.fragments(field)?);
-                }
-                Ok(vec![SExpr::List(items)])
-            }
-            Value::Variant { name, fields } if fields.is_empty() => {
-                Ok(vec![SExpr::Atom(name.clone())])
-            }
-            Value::Variant { name, fields } => {
-                let mut items = vec![SExpr::Atom(name.clone())];
-                for (_, field) in fields {
-                    items.extend(self.variant_field_fragments(field)?);
-                }
-                Ok(vec![SExpr::List(items)])
-            }
-        }
-    }
-
-    fn sequence_fragments(&mut self, values: &'value [Value]) -> Result<Vec<SExpr>, String> {
-        let mut expressions = Vec::new();
-        for value in values {
-            expressions.extend(self.fragments(value)?);
-        }
-        Ok(expressions)
-    }
-
-    fn variant_field_fragments(&mut self, value: &'value Value) -> Result<Vec<SExpr>, String> {
-        match value {
-            Value::Record { name, fields } if !name.starts_with('$') => {
-                let mut expressions = Vec::new();
-                for (_, field) in fields {
-                    expressions.extend(self.fragments(field)?);
-                }
-                Ok(expressions)
-            }
-            _ => self.fragments(value),
-        }
-    }
-
-    fn resolve_reference(
-        &mut self,
-        fields: &'value [(String, Value)],
-    ) -> Result<Vec<SExpr>, String> {
-        let kind = record_atom(fields, "kind")?;
-        let index = record_atom(fields, "index")?
-            .parse::<usize>()
-            .map_err(|error| format!("invalid {kind} arena index: {error}"))?;
-        let key = (kind, index);
-
-        if self.resolving.contains(&key) {
-            return Err(format!(
-                "cyclic {kind} arena reference at index {index}; storage back-references must be excluded from logical serialization"
-            ));
-        }
-
-        let value = self
-            .arenas
-            .get(kind)
-            .and_then(|values| values.get(index))
-            .ok_or_else(|| format!("missing {kind} arena value at index {index}"))?;
-        self.resolving.push(key);
-        let result = self.fragments(value);
-        self.resolving.pop();
-        result
+fn render_root(value: &Value) -> Result<SExpr, String> {
+    match fragments(value).as_slice() {
+        [expression] => Ok(expression.clone()),
+        [] => Err("normalization produced no logical value".to_owned()),
+        _ => Err("normalization produced more than one logical root".to_owned()),
     }
 }
 
-fn field<'value>(fields: &'value [(String, Value)], name: &str) -> Option<&'value Value> {
-    fields
-        .iter()
-        .find_map(|(field_name, value)| (field_name == name).then_some(value))
-}
-
-fn record_atom<'value>(
-    fields: &'value [(String, Value)],
-    name: &str,
-) -> Result<&'value str, String> {
-    match field(fields, name) {
-        Some(Value::Atom(atom)) => Ok(atom),
-        _ => Err(format!("missing `{name}` atom")),
+fn fragments(value: &Value) -> Vec<SExpr> {
+    match value {
+        Value::Unit | Value::Option(None) => Vec::new(),
+        Value::Atom(atom) => vec![SExpr::Atom(atom.clone())],
+        Value::Option(Some(value)) => fragments(value),
+        Value::Sequence(values) => values.iter().flat_map(fragments).collect(),
+        Value::Map(entries) => {
+            let mut items = vec![SExpr::Atom("Map".to_owned())];
+            for (key, value) in entries {
+                let mut pair = fragments(key);
+                pair.extend(fragments(value));
+                items.push(SExpr::List(pair));
+            }
+            vec![SExpr::List(items)]
+        }
+        Value::Record { name, fields } => {
+            let mut items = vec![SExpr::Atom(name.clone())];
+            for (_, field) in fields {
+                items.extend(fragments(field));
+            }
+            vec![SExpr::List(items)]
+        }
+        Value::Variant { name, fields } if fields.is_empty() => {
+            vec![SExpr::Atom(name.clone())]
+        }
+        Value::Variant { name, fields } => {
+            let mut items = vec![SExpr::Atom(name.clone())];
+            for (_, field) in fields {
+                items.extend(variant_field_fragments(field));
+            }
+            vec![SExpr::List(items)]
+        }
     }
 }
 
-fn record_sequence<'value>(
-    fields: &'value [(String, Value)],
-    name: &str,
-) -> Result<&'value [Value], String> {
-    match field(fields, name) {
-        Some(Value::Sequence(values)) => Ok(values),
-        _ => Err(format!("missing `{name}` sequence")),
+fn variant_field_fragments(value: &Value) -> Vec<SExpr> {
+    match value {
+        Value::Record { fields, .. } => fields
+            .iter()
+            .flat_map(|(_, field)| fragments(field))
+            .collect(),
+        _ => fragments(value),
     }
 }
 

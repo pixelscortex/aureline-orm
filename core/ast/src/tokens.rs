@@ -9,4 +9,12 @@ pub enum Token<'src> {
     Schemaless,
     LBrace,
     RBrace,
+    LAngle,
+    RAngle,
+    LBracket,
+    RBracket,
+    Comma,
+    Question,
+    Pipe,
+    Integer(&'src str),
 }

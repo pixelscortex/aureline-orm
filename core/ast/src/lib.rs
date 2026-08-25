@@ -2,6 +2,10 @@ pub mod arena;
 pub mod ast;
 pub mod builder;
 pub mod ids;
+pub mod source;
 pub mod tokens;
 
-pub use builder::{AllocInAst, AstBuilder};
+#[cfg(feature = "contract-serde")]
+mod contract_serde;
+
+pub use builder::{AstBuilder, TableFieldBuilder};
