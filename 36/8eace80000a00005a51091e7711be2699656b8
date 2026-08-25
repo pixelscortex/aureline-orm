@@ -1,0 +1,68 @@
+core/parser/AGENTS.md
+  s_ee89e26b6e5206::t_9e322441ff4162 14
+core/parser/src/lexer/mod.rs
+  s_ee89e26b6e5206::t_d10bf97d439420 94
+  s_ee89e26b6e5206::t_9e322441ff4162 26-27
+  s_ee89e26b6e5206::t_0eb12e732d7167 9,13-14
+core/parser/src/grammar/state.rs
+  s_ee89e26b6e5206::t_1037afe5b31baf 27
+core/parser/src/grammar/type_expression/parsed.rs
+  s_ee89e26b6e5206::t_dabd9e47ad0669 10-11
+  s_80a42bd4868c88::t_136531a381719d 1,6-8,20,27-28,35,40,46-49,56-60
+core/parser/src/grammar/table.rs
+  s_ee89e26b6e5206::t_5c96c63406b34c 55,168-171,173
+  s_ee89e26b6e5206::t_253c81b8a2d59d 113
+  s_ee89e26b6e5206::t_5fb4efc1f00215 34
+  s_ee89e26b6e5206::t_73ccfacb2af592 64-66,101
+  s_ee89e26b6e5206::t_9e322441ff4162 154
+  s_ee89e26b6e5206::t_52158678e0f26e 172
+  s_ee89e26b6e5206::t_13add61aee21b0 67,78,132-133,136,138
+core/parser/src/grammar/type_expression/application.rs
+  s_ee89e26b6e5206::t_71d244e1c3d019 101,123,138
+  s_ee89e26b6e5206::t_9b8bb135d9c16b 108-110,129-131,139-144
+  s_80a42bd4868c88::t_136531a381719d 16-26,41-46,87-88
+testing/contract/tests/parser.rs
+  s_ee89e26b6e5206::t_9b8bb135d9c16b 373-376,526-529,818-819,825-828,832-835,839-842,852,922-925,938-941,1068-1071,1083-1086
+  s_ee89e26b6e5206::t_6cd0ce711b9f26 820
+  s_ee89e26b6e5206::t_a86d5fda09b091 768
+  s_ee89e26b6e5206::t_bbd433e1189cb5 1064,1077
+core/parser/src/lexer/identifier.rs
+  s_ee89e26b6e5206::t_7bb9a9607ba4a0 12-13
+core/parser/src/lib.rs
+  s_ee89e26b6e5206::t_5fb4efc1f00215 37-38
+core/parser/src/grammar/field.rs
+  s_ee89e26b6e5206::t_9b8bb135d9c16b 94-97,109,114-116
+  s_ee89e26b6e5206::t_5fb4efc1f00215 28
+  s_ee89e26b6e5206::t_ae01d11bf237d0 110-113,117-118
+  s_ee89e26b6e5206::t_8d71fd89b0888b 41
+core/parser/src/grammar/type_expression/mod.rs
+  s_ee89e26b6e5206::t_253c81b8a2d59d 65
+  s_80a42bd4868c88::t_136531a381719d 12,23-29,33-37,51-57
+  s_ee89e26b6e5206::t_6c089365832c2f 66
+core/parser/src/grammar/mod.rs
+  s_ee89e26b6e5206::t_253c81b8a2d59d 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "368eace80000a00005a51091e7711be2699656b8",
+  "prompts": {},
+  "sessions": {
+    "s_80a42bd4868c88": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a039aa-c36e-7ca2-805e-47794ec3679c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_ee89e26b6e5206": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0399b-46fb-7a10-9a50-a53b3f2527db",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
