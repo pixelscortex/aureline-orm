@@ -1,0 +1,64 @@
+core/parser/src/grammar/state.rs
+  s_80a42bd4868c88::t_279df5750afd09 5-6
+core/parser/src/grammar/type_expression/tuple.rs
+  s_80a42bd4868c88::t_136531a381719d 16-24,38-42,67-68
+testing/contract/tests/AGENTS.md
+  s_8f2786863fd41d::t_cda31d9a2bbc2e 1-3
+testing/contract/tests/parser/type_expressions.rs
+  s_8f2786863fd41d::t_dffdcc76dd93d5 1-222
+core/parser/src/grammar/type_expression/sequence.rs
+  s_80a42bd4868c88::t_136531a381719d 7-10,14,20,27-31
+core/parser/src/grammar/type_expression/name.rs
+  s_80a42bd4868c88::t_136531a381719d 1-6
+testing/contract/tests/parser/diagnostics.rs
+  s_8f2786863fd41d::t_a29078f44a0e74 1-27,29-30,37-128,130-131,138-175
+  s_8f2786863fd41d::t_1151e0b639df53 28,31-36,129,132-137
+testing/contract/tests/parser/identifiers.rs
+  s_8f2786863fd41d::t_df1acb4a651bfc 1-217,219-221,229-231,233-240,248-375,378-384,386-393,396-450
+  s_8f2786863fd41d::t_a4b03fcababdfd 218,222,225-228,232,241,244-247
+  s_8f2786863fd41d::t_183d9e2e0026ea 376-377,385,394-395
+  s_8f2786863fd41d::t_3f7981b37641cc 223-224,242-243
+testing/contract/tests/parser.rs
+  s_8f2786863fd41d::t_9db4d05654ce42 7,9,11,13,15,17,19,21
+  s_8f2786863fd41d::t_76d3820844e90e 1-6,8,10,12,14,16,18,20,22
+core/parser/src/problem.rs
+  s_80a42bd4868c88::t_279df5750afd09 13-15,39-40
+testing/contract/tests/parser/support.rs
+  s_8f2786863fd41d::t_2a22b0280307f9 1-13
+core/parser/src/lib.rs
+  s_80a42bd4868c88::t_279df5750afd09 37-40
+testing/contract/tests/parser/comments_newlines.rs
+  s_8f2786863fd41d::t_c29564e082ffd8 1-103
+core/parser/src/grammar/type_expression/union.rs
+  s_80a42bd4868c88::t_136531a381719d 12-20,34-39,80-81
+testing/contract/tests/parser/declarations.rs
+  s_8f2786863fd41d::t_2c78e4f851e3d0 1-86
+testing/contract/tests/parser/tokenizer.rs
+  s_8f2786863fd41d::t_146896a7132ce2 1-21
+testing/contract/tests/parser/tuples.rs
+  s_8f2786863fd41d::t_17cbe219bccdba 1-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "15a3ff5eb963851c99d16881b2988abbb16f88fe",
+  "prompts": {},
+  "sessions": {
+    "s_80a42bd4868c88": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a039aa-c36e-7ca2-805e-47794ec3679c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_8f2786863fd41d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a039a9-2ed6-7213-a894-9cf091fb7a75",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
