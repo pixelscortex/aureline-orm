@@ -1,0 +1,35 @@
+core/parser/src/grammar/mod.rs
+  s_ee89e26b6e5206::t_73c2bca4fec28a 19
+core/parser/src/grammar/field.rs
+  s_ee89e26b6e5206::t_73c2bca4fec28a 41-42,112,115
+  s_80a42bd4868c88::t_279df5750afd09 9-17,26-28,76,81,85
+core/parser/src/grammar/table.rs
+  s_80a42bd4868c88::t_279df5750afd09 11-13,16-17,33-35,62,67-70,96-99,148-151
+  s_ee89e26b6e5206::t_73c2bca4fec28a 55,57,165,168
+core/parser/src/grammar/name.rs
+  s_ee89e26b6e5206::t_73c2bca4fec28a 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5403bc68fa32e2bb95e18ec68f91eb0bb06f988c",
+  "prompts": {},
+  "sessions": {
+    "s_80a42bd4868c88": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a039aa-c36e-7ca2-805e-47794ec3679c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    },
+    "s_ee89e26b6e5206": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0399b-46fb-7a10-9a50-a53b3f2527db",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
