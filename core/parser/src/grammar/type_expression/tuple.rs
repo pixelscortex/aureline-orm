@@ -13,6 +13,15 @@
 //! The parser consumes the bracketed item sequence once. Ordinary Rust then
 //! classifies comma placement and nested member problems, making recovery
 //! precedence explicit instead of distributing it across competing parsers.
+//!
+//! `[A | B, C]` stages two members and one separator before producing a tuple.
+//! `[A,, C]` instead consumes the closing `]` and carries
+//! `MissingTupleMember`; no tuple is exposed and no AST allocation occurs.
+//!
+//! In the parser signature, `P` is the complete recursive type parser supplied
+//! by the composition root. `'src` owns borrowed token spellings and `'tokens`
+//! owns the input slice; `impl Parser` describes the parser rather than a parsed
+//! tuple.
 
 use aureline_ast::{ast::SourceType, tokens::Token};
 use chumsky::prelude::*;
@@ -26,6 +35,11 @@ use super::{
     sequence::{self, SequenceItem, SequenceShapeProblem},
 };
 
+/// Parses one bracket-delimited tuple into a valid-or-recovered type expression.
+///
+/// The parser consumes `[` through `]`, including every member and comma. Items
+/// remain structurally neutral until [`classify`] decides tuple-specific comma
+/// rules and converts valid member spans. It never allocates into the AST.
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
 ) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra>
@@ -50,6 +64,8 @@ where
         .map_with(|items, context| classify(items, context.span(), &context.state().0))
 }
 
+/// Applies tuple separator policy and constructs the tuple only if every staged
+/// member is valid.
 fn classify(
     items: Vec<SequenceItem<ParsedTypeExpression>>,
     tuple_span: SimpleSpan,

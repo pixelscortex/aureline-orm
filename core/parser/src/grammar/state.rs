@@ -2,8 +2,8 @@
 //!
 //! Chumsky token spans remain source-relative byte ranges. [`ParserState`]
 //! supplies the source identity when an AST node or public problem needs a full
-//! [`SourceSpan`]. It also owns the AST builder and the lexer's otherwise
-//! discarded inline-whitespace channel.
+//! [`SourceSpan`]. It also owns the AST builder used only at declaration commit
+//! points.
 
 use aureline_ast::{
     AstBuilder,

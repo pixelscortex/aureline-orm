@@ -10,10 +10,9 @@ use chumsky::prelude::SimpleSpan;
 /// The violated part of Aureline's ASCII bare-identifier boundary,
 /// `[A-Za-z_][A-Za-z0-9_]*`.
 ///
-/// The lexer reports violations it can identify without grammar context, such
-/// as `User.Name`. The grammar reports context-dependent violations, such as
-/// `User?Name` in a table-name slot, because `?` is also legitimate structural
-/// input to the type grammar.
+/// The lexer reports character-level violations such as `User.Name`. The grammar
+/// additionally recognizes a pure integer in a table or field name slot as a
+/// leading-digit violation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IdentifierProblem {
     /// An identifier began with an ASCII digit.
@@ -37,9 +36,8 @@ pub enum IdentifierProblem {
     ContainsHyphen,
     /// An identifier contained another ASCII punctuation character.
     ///
-    /// Examples include `User@Name`, `User/Name`, and contextual structural
-    /// punctuation such as `User?Name` or `array<string>` in a declared-name
-    /// slot. The problem span identifies the first violation.
+    /// Examples include `User@Name` and `User/Name`. The problem span identifies
+    /// the first violation.
     ContainsPunctuation,
     /// A name used backticks, which Aureline reserves rather than accepting as
     /// identifier escaping.
