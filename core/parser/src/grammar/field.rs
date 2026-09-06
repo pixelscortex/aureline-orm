@@ -6,16 +6,15 @@
 //!
 //! Parsing proceeds in three stages:
 //!
-//! 1. The shared declared-name parser recognizes a name together with the field's
-//!    type and physical boundary. This keeps a short recovery from succeeding
-//!    while leaving tokens that hide a more precise problem.
-//! 2. A valid name produces [`ParsedField`], while type-expression and
-//!    declared-name recovery produces [`GrammarProblem`]. A consumed recursive
-//!    type can therefore carry a problem without becoming an invalid public
-//!    [`SourceType`].
-//! 3. The table parser compares staged field and header problems by source
-//!    position. Only a problem-free table allocates its fields, so rejected input
-//!    never leaves a partial table in the AST.
+//! 1. The name and complete recursive type are consumed up to a physical field
+//!    boundary. Requiring that boundary prevents a short type parse from leaving
+//!    tokens that hide the real error.
+//! 2. A valid name and type produce [`ParsedField`]. Integer-name recovery or a
+//!    recovered type expression produces [`GrammarProblem`] without constructing
+//!    an invalid public [`SourceType`].
+//! 3. The table parser compares staged field problems by source position. Only a
+//!    problem-free table allocates its fields, so rejected input never leaves a
+//!    partial table in the AST.
 //!
 //! Representative flows:
 //!
@@ -24,8 +23,9 @@
 //!   -> FieldOutcome::Field(name = "owner", type = application(record, union(User, Bot)))
 //!   -> FieldDecl after the surrounding table commits
 //!
-//! first name string
-//!   -> `first` is the name and `name` is unexpected after its type slot
+//! owner record<User |>
+//!   -> recursive type recovery consumes `>`
+//!   -> FieldOutcome::Problem(MissingUnionMember)
 //!   -> no FieldDecl allocation
 //! ```
 //!
@@ -38,7 +38,8 @@ use aureline_ast::{TableFieldBuilder, ast::SourceType, source::SourceSpan, token
 use chumsky::prelude::*;
 
 use super::{
-    atom::{ident, integer},
+    atom::ident,
+    name::leading_digit_name_problem,
     problem::GrammarProblem,
     state::{ParserExtra, TokenInput},
     type_expression,
@@ -72,16 +73,16 @@ pub(super) enum FieldOutcome {
     Problem(GrammarProblem),
 }
 
-/// Parses `<declared-name> <type-expression>` up to a physical field boundary.
+/// Parses `<field-name> <type-expression>` up to a physical field boundary.
 ///
 /// The parser consumes the name and type, then looks ahead for newline or `}`
 /// without consuming that boundary; the table body owns separators and its
 /// closing delimiter. It returns [`FieldOutcome::Field`] for valid syntax or
-/// [`FieldOutcome::Problem`] for a recognized malformed name/type. Allocation is
+/// [`FieldOutcome::Problem`] for an integer name or recovered type. Allocation is
 /// deferred to [`ParsedField::alloc_in`] after the table selects no problem.
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, FieldOutcome, ParserExtra> {
-    // Every declared-name alternative must reach a physical field boundary
+    // Every name alternative must reach a physical field boundary
     // before it can win. `rewind` makes this a lookahead: the table body still
     // consumes the newline or `}` after field classification. Without the guard,
     // a short recovery could leave tokens that hide a more precise field problem.
@@ -108,12 +109,10 @@ pub(super) fn parser<'tokens, 'src: 'tokens>()
             }
         });
 
-    let integer_name = integer()
+    let integer_name = leading_digit_name_problem()
         .then(type_expression::parser())
         .then_ignore(field_end())
-        .map_with(|(name, _), _| {
-            FieldOutcome::Problem(GrammarProblem::identifier_starts_with_digit(name.span))
-        });
+        .map(|(problem, _)| FieldOutcome::Problem(problem));
 
     choice((integer_name, named))
 }

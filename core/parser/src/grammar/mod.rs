@@ -16,6 +16,7 @@
 mod atom;
 mod document;
 mod field;
+mod name;
 mod problem;
 mod state;
 mod table;

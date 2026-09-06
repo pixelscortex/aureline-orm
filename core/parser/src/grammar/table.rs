@@ -8,13 +8,13 @@
 //! }
 //! ```
 //!
-//! Physical newlines—not commas or semicolons—separate fields. Recovery parsers
-//! consume known malformed table names and headers so callers receive a precise
-//! problem rather than an error at a later brace or keyword.
+//! Physical newlines—not commas or semicolons—separate fields. The grammar
+//! recognizes an integer in the table-name slot as a directed identifier
+//! problem; other malformed headers fail through the ordinary grammar seam.
 //!
 //! Construction is atomic at the table seam. The parser first consumes the full
-//! header and body into staged outcomes, then selects the earliest header or field
-//! problem. Only when no problem exists does it call
+//! header and body into staged outcomes, then selects the earliest field problem.
+//! Only when no problem exists does it call
 //! [`AstBuilder::alloc_table`](aureline_ast::AstBuilder::alloc_table)
 //! to allocate the table and both field-ownership edges in one construction walk.
 //! Malformed input therefore cannot leave a partial public AST behind.
@@ -30,9 +30,9 @@
 //! becomes a staged `User`/`schemafull` header plus one staged `owner` field.
 //! With no problem, allocation produces one table ID and one field ID: the table
 //! lists the field ID, the field points back to the table ID, and the source file
-//! lists the table ID. If the field were `first name string`, the full table would
-//! still be consumed, but the first structural problem wins and neither ID would
-//! be allocated.
+//! lists the table ID. If the field type were `record<User |>` instead, the full
+//! table would still be consumed, but `MissingUnionMember` would win and neither
+//! ID would be allocated.
 //!
 //! The word *header* in this file means only the declared name and schema mode:
 //!
@@ -52,27 +52,22 @@ use aureline_ast::{ast::SchemaType, tokens::Token};
 use chumsky::prelude::*;
 
 use super::{
-    atom::{ident, integer, schema_type},
+    atom::{ident, schema_type},
     field::{self, FieldOutcome},
+    name::leading_digit_name_problem,
     problem::GrammarProblem,
     state::{ParserExtra, TokenInput},
 };
 
-/// Staged result parsed between the `table` keyword and the opening `{`.
-///
-/// `Ok` contains the valid declared name and its following spanned schema mode.
-/// Header parsing emits one name and one schema mode. Malformed header tokens
-/// fail at the grammar boundary; the body is only staged for a structurally
-/// valid header before the table can commit.
+/// The valid declared name and schema mode staged before the body is parsed.
 type ParsedTableHeader = (Spanned<String>, Spanned<SchemaType>);
 
 /// Parses the declared name and schema mode after `table` and before `{`.
 ///
-/// For example, the token shape `User schemafull` becomes `Ok(name = User,
-/// following = schemafull)`. `User Profile schemafull` is also consumed
-/// completely, but becomes `Err(IdentifierWhitespace)`. This parser consumes
-/// neither the `table` keyword nor the body opener; the complete-table [`parser`]
-/// owns both.
+/// For example, the token shape `User schemafull` emits the spanned name `User`
+/// and mode `SchemaType::Full`. This parser consumes neither the `table` keyword
+/// nor the body opener; the complete-table [`parser`] owns both. Invalid header
+/// shapes fail without mutating parser state.
 fn header_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTableHeader, ParserExtra> {
     ident().then(schema_type())
@@ -98,9 +93,10 @@ fn body_parser<'tokens, 'src: 'tokens>()
 
 /// Parses a table with a recognized schema mode, then commits or rejects it.
 ///
-/// Every body item is a staged [`FieldOutcome`]. This parser folds all problems by source position
-/// before touching the AST. A problem-free declaration allocates the table and
-/// fields together; a rejected declaration allocates nothing.
+/// Every body item is a staged [`FieldOutcome`]. This parser selects the earliest
+/// problem by source position before touching the AST. A problem-free declaration
+/// allocates the table and fields together; a rejected declaration allocates
+/// nothing.
 fn recognized_table_parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<GrammarProblem>, ParserExtra> {
     just(Token::Table)
@@ -149,10 +145,10 @@ fn recognized_table_parser<'tokens, 'src: 'tokens>()
 
 /// Combines the mini parsers that recognize one complete `table` declaration.
 ///
-/// [`missing_schema_type_parser`] owns the table-specific malformed schema slot;
-/// [`recognized_table_parser`] owns headers with a real schema mode and delegates
-/// the complete declaration grammar directly. The output describes
-/// the commit result:
+/// The first alternative consumes a pure-integer table name together with the
+/// remaining valid declaration and emits `IdentifierStartsWithDigit` without
+/// allocation. [`recognized_table_parser`] owns the ordinary identifier header,
+/// body staging, and atomic commit. The output describes the commit result:
 ///
 /// - `None` means the declaration was valid and has been allocated in
 ///   [`ParserState`](super::state::ParserState)'s
@@ -166,9 +162,9 @@ fn recognized_table_parser<'tokens, 'src: 'tokens>()
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, Option<GrammarProblem>, ParserExtra> {
     let integer_name = just(Token::Table)
-        .ignore_then(integer())
+        .ignore_then(leading_digit_name_problem())
         .then(schema_type())
         .then(body_parser())
-        .map(|((integer, _), _)| Some(GrammarProblem::identifier_starts_with_digit(integer.span)));
+        .map(|((problem, _), _)| Some(problem));
     choice((integer_name, recognized_table_parser()))
 }
