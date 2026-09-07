@@ -107,7 +107,7 @@ fn duplicate_findings_keep_later_primary_and_first_context_spans() {
             let second_field = first_table_decl.fields()[1];
             let third_field = first_table_decl.fields()[2];
 
-            let findings = check(ast).into_vec();
+            let findings = check(ast).findings().to_vec();
             assert_eq!(findings.len(), 3);
             assert_eq!(
                 findings[0],
@@ -172,7 +172,7 @@ fn duplicate_spans_count_utf8_bytes_before_the_name() {
                     .expect("second table exists");
                 assert_eq!(first.name_span().range().start().get(), 12);
                 assert_eq!(second.name_span().range().start().get(), 37);
-                let findings = check(ast).into_vec();
+                let findings = check(ast).findings().to_vec();
                 assert_eq!(
                     findings[0],
                     Finding::DuplicateTable {

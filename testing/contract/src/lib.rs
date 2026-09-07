@@ -112,12 +112,42 @@ impl AurlTest {
                 )
             },
         );
-        let findings = aureline_checker::check(&ast).into_vec();
+        let findings = aureline_checker::check(&ast).findings().to_vec();
         let view = Findings {
             findings: &findings,
         };
         let actual = normalizer::normalize(&view)
             .unwrap_or_else(|error| panic!("could not normalize semantic Findings: {error}"));
+
+        matcher::assert_matches(expected, &actual);
+    }
+
+    /// Parses source, checks it, and compares its valid semantic program as a
+    /// logical S-expression.
+    ///
+    /// This assertion crosses the same generation gate as a consumer: an
+    /// invalid source panics instead of exposing recovery data as a checked
+    /// program. The checker contract serializer projects private storage into
+    /// source-ordered tables, fields, and resolved semantic types.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the source cannot be parsed or checked, when the checked
+    /// program cannot be normalized, or when the expectation does not match.
+    pub fn checks_as(self, expected: &str) {
+        let ast = aureline_parser::parse_with_source(self.source_id, &self.source).unwrap_or_else(
+            |errors| {
+                panic!(
+                    "source did not parse:\n{}\n\nparser errors:\n{errors:#?}",
+                    self.source
+                )
+            },
+        );
+        let checked = aureline_checker::check(&ast)
+            .into_checked()
+            .unwrap_or_else(|analysis| panic!("source did not check:\n{:?}", analysis.findings()));
+        let actual = normalizer::normalize(&checked)
+            .unwrap_or_else(|error| panic!("could not normalize checked program: {error}"));
 
         matcher::assert_matches(expected, &actual);
     }

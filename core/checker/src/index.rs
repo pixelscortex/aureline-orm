@@ -242,12 +242,3 @@ pub fn judge_duplicates(index: &ResolutionIndex<'_>, findings: &mut Findings<Fin
         }
     }
 }
-
-/// Collects declarations and reports duplicate names in the table-check order.
-#[must_use]
-pub fn check(ast: &Ast) -> Findings<Finding> {
-    let index = ResolutionIndex::collect(ast);
-    let mut findings = Findings::new();
-    judge_duplicates(&index, &mut findings);
-    findings
-}

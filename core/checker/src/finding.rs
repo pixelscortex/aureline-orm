@@ -1,11 +1,10 @@
 use aureline_ast::{ids::TableId, source::SourceSpan};
 
-/// A typed semantic problem owned by the table declaration checks.
+/// A typed semantic problem before diagnostic wording and presentation.
 ///
-/// Locations use the declaration name spans: the later declaration is the
-/// primary location and the first declaration is retained as context. The
-/// exact source spelling is copied into the Finding so a report remains
-/// self-contained after the AST is no longer available to a renderer.
+/// Findings preserve original names and precise source locations. Declaration
+/// collisions retain the first name span as context; type failures locate the
+/// offending type name or structural form.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Finding {
     /// A table name was declared more than once, with exact case-sensitive
@@ -26,4 +25,31 @@ pub enum Finding {
         primary: SourceSpan,
         first: SourceSpan,
     },
+    /// A source type name is not part of the supported `SurrealDB` scalar
+    /// catalog and is not a declared table name.
+    UnknownType { name: String, span: SourceSpan },
+    /// A real `SurrealDB` type family is known, but this table slice does not
+    /// provide its semantic contract yet.
+    UnsupportedType { name: String, span: SourceSpan },
+    /// A declared table name was used as a type instead of `record<Name>`.
+    BareTableType { name: String, span: SourceSpan },
+    /// A recursive type form belongs to a later semantic slice.
+    UnsupportedTypeSyntax {
+        kind: UnsupportedTypeSyntaxKind,
+        span: SourceSpan,
+    },
+    /// A scalar name was incorrectly used as a generic constructor.
+    WrongArity {
+        name: String,
+        expected: usize,
+        actual: usize,
+        span: SourceSpan,
+    },
+}
+
+/// A source type shape whose semantic contract is owned by a later slice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnsupportedTypeSyntaxKind {
+    Union,
+    Tuple,
 }
