@@ -5,7 +5,7 @@
 /// Recovery is deliberately not represented here. Unknown and invalid source
 /// types are carried by [`crate::TypeResolution`], so a `SemanticType` can
 /// never be mistaken for a proven contract.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SemanticType {
     Any,
     Bool,
@@ -23,6 +23,8 @@ pub enum SemanticType {
     None,
     Null,
     Record(RecordTargets),
+    /// Canonical alternatives; ordering is structural, not an assignability relation.
+    Union(Vec<SemanticType>),
     /// An ordered homogeneous collection with an optional exact length.
     Array {
         element: Box<SemanticType>,
@@ -67,4 +69,45 @@ impl SemanticType {
 pub enum RecordTargets {
     Any,
     Tables(Vec<aureline_ast::ids::TableId>),
+}
+
+impl Ord for RecordTargets {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use aureline_ast::arena::ArenaId;
+        use std::cmp::Ordering;
+        match (self, other) {
+            (Self::Any, Self::Any) => Ordering::Equal,
+            (Self::Any, Self::Tables(_)) => Ordering::Less,
+            (Self::Tables(_), Self::Any) => Ordering::Greater,
+            (Self::Tables(left), Self::Tables(right)) => left
+                .iter()
+                .map(|id| id.into_index())
+                .cmp(right.iter().map(|id| id.into_index())),
+        }
+    }
+}
+
+impl PartialOrd for RecordTargets {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Whether the resolved outer field contract permits absence (`NONE`).
+/// This says nothing about a stored `NULL` value or absence nested in a collection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "contract-serde", derive(serde::Serialize))]
+pub enum FieldPresence {
+    Required,
+    Optional,
+}
+
+impl SemanticType {
+    pub(crate) fn admits_none(&self) -> bool {
+        match self {
+            Self::Any | Self::None => true,
+            Self::Union(members) => members.iter().any(Self::admits_none),
+            _ => false,
+        }
+    }
 }

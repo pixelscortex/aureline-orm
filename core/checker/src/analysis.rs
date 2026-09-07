@@ -134,6 +134,18 @@ impl<'ast> Analysis<'ast> {
 }
 
 impl<'ast> CheckedProgram<'ast> {
+    /// Derives field presence from the resolved outer type, without revisiting syntax.
+    #[must_use]
+    pub fn field_presence(&self, id: FieldId) -> Option<crate::FieldPresence> {
+        self.type_of_field(id).map(|ty| {
+            if ty.admits_none() {
+                crate::FieldPresence::Optional
+            } else {
+                crate::FieldPresence::Required
+            }
+        })
+    }
+
     #[must_use]
     pub fn tables(&self) -> &[TableId] {
         self.index.tables()

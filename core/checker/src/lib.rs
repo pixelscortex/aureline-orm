@@ -12,6 +12,7 @@ mod records;
 mod reporting;
 mod resolver;
 mod semantic_type;
+mod unions;
 
 #[cfg(feature = "contract-serde")]
 mod contract_serde;
@@ -20,7 +21,7 @@ pub use analysis::{Analysis, CheckedProgram};
 pub use finding::{ArgumentRole, Finding, UnsupportedTypeSyntaxKind};
 pub use index::{FieldResolution, ResolutionIndex, TableResolution};
 pub use reporting::{Findings, Reported, TypeResolution};
-pub use semantic_type::{RecordTargets, SemanticType};
+pub use semantic_type::{FieldPresence, RecordTargets, SemanticType};
 
 /// Collects declarations, judges duplicates, and resolves every field type.
 #[must_use]

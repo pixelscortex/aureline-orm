@@ -113,6 +113,10 @@ impl Serialize for ContractType<'_, '_> {
                     &(nested(element), max_distinct),
                 );
             }
+            SemanticType::Union(members) => {
+                let members = members.iter().map(nested).collect::<Vec<_>>();
+                return serializer.serialize_newtype_variant("SemanticType", 0, "Union", &members);
+            }
             SemanticType::Record(RecordTargets::Any) => "Record",
             SemanticType::Record(RecordTargets::Tables(targets)) => {
                 let names = targets

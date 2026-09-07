@@ -17,7 +17,6 @@ use crate::{
 };
 
 const UNSUPPORTED_SCALARS: &[&str] = &[
-    "option",
     "geometry",
     "point",
     "line",
@@ -39,13 +38,7 @@ pub(crate) fn resolve(
     match source_type {
         SourceType::Name(name) => resolve_name(name.name(), name.span(), index, findings),
         SourceType::Application(application) => resolve_application(application, index, findings),
-        SourceType::Union(union) => invalid(
-            findings,
-            Finding::UnsupportedTypeSyntax {
-                kind: UnsupportedTypeSyntaxKind::Union,
-                span: union.span(),
-            },
-        ),
+        SourceType::Union(union) => crate::unions::resolve(union, index, findings),
         SourceType::Tuple(tuple) => invalid(
             findings,
             Finding::UnsupportedTypeSyntax {
@@ -63,6 +56,10 @@ fn resolve_application(
 ) -> TypeResolution<SemanticType> {
     let name = application.name().name();
     let span = application.name().span();
+    if name.eq_ignore_ascii_case("option") {
+        return crate::unions::resolve_option(application, index, findings);
+    }
+
     if name.eq_ignore_ascii_case("record") {
         return crate::records::resolve(application, index, findings);
     }
@@ -116,6 +113,18 @@ fn resolve_name(
     index: &ResolutionIndex<'_>,
     findings: &mut Findings<Finding>,
 ) -> TypeResolution<SemanticType> {
+    if name.eq_ignore_ascii_case("option") {
+        return invalid(
+            findings,
+            Finding::WrongArity {
+                name: name.to_owned(),
+                minimum: 1,
+                maximum: 1,
+                actual: 0,
+                span,
+            },
+        );
+    }
     if name.eq_ignore_ascii_case("record") {
         return TypeResolution::Resolved(SemanticType::Record(crate::RecordTargets::Any));
     }

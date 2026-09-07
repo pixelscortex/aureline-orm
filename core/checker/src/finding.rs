@@ -101,7 +101,6 @@ pub enum Finding {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "contract-serde", derive(serde::Serialize))]
 pub enum UnsupportedTypeSyntaxKind {
-    Union,
     Tuple,
 }
 
@@ -112,4 +111,5 @@ pub enum ArgumentRole {
     ElementType,
     CollectionSize,
     RecordTarget,
+    OptionType,
 }
