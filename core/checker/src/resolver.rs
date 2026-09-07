@@ -1,11 +1,15 @@
 //! One recursive operation for turning source type syntax into valid contracts.
 //!
-//! The current slice owns scalar names. The operation still dispatches over
-//! every source shape so later collection, link, union, and tuple work extends
-//! one owner rather than introducing another AST walk. Unsupported forms report
-//! one root Finding and return invalid recovery proof; they are never widened.
-//! Builtins match ASCII case-insensitively as in `SurrealDB`; names used for
-//! declaration resolution retain their exact spelling.
+//! Each field enters this dispatch once. Constructor helpers validate argument
+//! roles and return nested value types to this same operation; record targets
+//! instead query the complete declaration index. For example,
+//! `array<record<User>>` resolves one element type and one table identity. A
+//! missing `User` reports at the target name, and its invalid proof propagates
+//! through the array while independently resolvable fields continue.
+//!
+//! Builtins match ASCII case-insensitively as in `SurrealDB`; declaration
+//! resolution retains exact spelling. Normalization changes semantic values
+//! only, leaving the source AST available with its original order and spans.
 
 use aureline_ast::ast::SourceType;
 

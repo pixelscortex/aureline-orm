@@ -3,8 +3,8 @@
 /// A resolved, target-neutral `SurrealDB` value contract.
 ///
 /// Recovery is deliberately not represented here. Unknown and invalid source
-/// types are carried by [`crate::TypeResolution`], so a `SemanticType` can
-/// never be mistaken for a proven contract.
+/// types are carried by [`crate::TypeResolution`]; recovery outcomes cannot
+/// appear inside this valid type algebra.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SemanticType {
     Any,
