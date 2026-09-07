@@ -84,31 +84,7 @@ fn resolve_application(
             },
         );
     }
-    if is_unsupported(name) {
-        return invalid(
-            findings,
-            Finding::UnsupportedType {
-                name: name.to_owned(),
-                span,
-            },
-        );
-    }
-    if !matches!(index.resolve_table(name), TableResolution::Missing) {
-        return invalid(
-            findings,
-            Finding::BareTableType {
-                name: name.to_owned(),
-                span,
-            },
-        );
-    }
-    invalid(
-        findings,
-        Finding::UnknownType {
-            name: name.to_owned(),
-            span,
-        },
-    )
+    resolve_unrecognized_name(name, span, index, findings)
 }
 
 fn resolve_name(
@@ -147,6 +123,15 @@ fn resolve_name(
     if let Some(scalar) = SemanticType::scalar(name) {
         return TypeResolution::Resolved(scalar);
     }
+    resolve_unrecognized_name(name, span, index, findings)
+}
+
+fn resolve_unrecognized_name(
+    name: &str,
+    span: aureline_ast::source::SourceSpan,
+    index: &ResolutionIndex<'_>,
+    findings: &mut Findings<Finding>,
+) -> TypeResolution<SemanticType> {
     if is_unsupported(name) {
         return invalid(
             findings,
