@@ -1,0 +1,21 @@
+core/checker/src/resolver.rs
+  s_fc4f77fa4748ce::t_d9bb22417961c9 3-12
+core/checker/src/semantic_type.rs
+  s_fc4f77fa4748ce::t_d9bb22417961c9 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "97981cde70514b6dda52350a1dde27af601769bf",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
