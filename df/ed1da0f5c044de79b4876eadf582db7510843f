@@ -1,0 +1,37 @@
+core/checker/src/resolver.rs
+  s_fc4f77fa4748ce::t_b38a6b4c3c41ea 41,45-47
+  s_fc4f77fa4748ce::t_6fb04f307b998a 42-44
+  s_fc4f77fa4748ce::t_eaf9b3bb0cc348 181-186,189-191,193-212
+  s_fc4f77fa4748ce::t_908cb51f2fb1b5 187-188,192
+  s_fc4f77fa4748ce::t_5c48efb79f894b 213
+core/checker/src/semantic_type.rs
+  s_fc4f77fa4748ce::t_eaf9b3bb0cc348 28-29
+core/checker/src/type_display.rs
+  s_fc4f77fa4748ce::t_eaf9b3bb0cc348 1-86
+core/checker/src/unions.rs
+  s_fc4f77fa4748ce::t_03a2f203e50108 15
+  s_fc4f77fa4748ce::t_eaf9b3bb0cc348 28-31
+core/checker/src/analysis.rs
+  s_fc4f77fa4748ce::t_eaf9b3bb0cc348 137-143
+core/checker/src/lib.rs
+  s_fc4f77fa4748ce::t_eaf9b3bb0cc348 15,19
+testing/contract/tests/tuples.rs
+  s_fc4f77fa4748ce::t_6bc352a86a23bb 1-10,12-16,18-79,81-82,84-98,100,102-130,132-133,135-145
+  s_fc4f77fa4748ce::t_4fff5eb4b53293 11,17,80,83,99,101,131,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "dfed1da0f5c044de79b4876eadf582db7510843f",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
