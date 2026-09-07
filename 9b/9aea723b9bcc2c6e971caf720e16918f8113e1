@@ -1,0 +1,39 @@
+core/checker/src/analysis.rs
+  s_fc4f77fa4748ce::t_da8aa43abb8d8f 137-148
+core/checker/src/contract_serde.rs
+  s_fc4f77fa4748ce::t_da8aa43abb8d8f 116-119
+core/checker/src/resolver.rs
+  s_fc4f77fa4748ce::t_da8aa43abb8d8f 41,59-62,116-127
+core/checker/src/lib.rs
+  s_fc4f77fa4748ce::t_da8aa43abb8d8f 15,24
+core/checker/src/semantic_type.rs
+  s_fc4f77fa4748ce::t_da8aa43abb8d8f 8,26-27,73-113
+core/checker/src/finding.rs
+  s_fc4f77fa4748ce::t_da8aa43abb8d8f 114
+testing/contract/tests/unions.rs
+  s_fc4f77fa4748ce::t_77bcd511316f0b 1-66,71-89,93-113,138-180,194-225
+  s_fc4f77fa4748ce::t_9a24ef4ba5085f 67-70,90-92,114-137
+  s_fc4f77fa4748ce::t_f77fa64c463861 181-193
+  s_fc4f77fa4748ce::t_fbcd93a5a9d4c7 226-255
+core/checker/src/unions.rs
+  s_fc4f77fa4748ce::t_a6c488f23b0b96 1-8,13-76,79-82,85-87,92-125,132-162
+  s_fc4f77fa4748ce::t_da8aa43abb8d8f 77-78,83-84,89-91
+  s_fc4f77fa4748ce::t_aba37697291e48 9-12,126-131
+  s_fc4f77fa4748ce::t_23ee0aa49a2d42 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9b9aea723b9bcc2c6e971caf720e16918f8113e1",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
