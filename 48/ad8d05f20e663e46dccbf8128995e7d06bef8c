@@ -1,0 +1,19 @@
+.codex/config.toml
+  s_b71e58bd392c50::t_2f292696a25bb7 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "48ad8d05f20e663e46dccbf8128995e7d06bef8c",
+  "prompts": {},
+  "sessions": {
+    "s_b71e58bd392c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07725-4f32-7fb0-83b7-474b7910e6e7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
