@@ -66,6 +66,20 @@ pub enum Finding {
         #[cfg_attr(feature = "contract-serde", serde(skip))]
         span: SourceSpan,
     },
+    /// A record constraint refers to no declared table.
+    MissingRecordTarget {
+        name: String,
+        #[cfg_attr(feature = "contract-serde", serde(skip))]
+        span: SourceSpan,
+    },
+    /// A record constraint has multiple declared candidates; none is a resolved identity.
+    AmbiguousRecordTarget {
+        name: String,
+        #[cfg_attr(feature = "contract-serde", serde(skip))]
+        span: SourceSpan,
+        #[cfg_attr(feature = "contract-serde", serde(skip))]
+        candidates: Vec<TableId>,
+    },
     /// An application argument has a value in a role that requires a type, or conversely.
     WrongArgumentRole {
         name: String,
@@ -97,4 +111,5 @@ pub enum UnsupportedTypeSyntaxKind {
 pub enum ArgumentRole {
     ElementType,
     CollectionSize,
+    RecordTarget,
 }

@@ -1,6 +1,6 @@
 //! Logical checked-program views omit source locations and arena identities.
 
-use crate::{CheckedProgram, SemanticType};
+use crate::{CheckedProgram, RecordTargets, SemanticType};
 use serde::{Serialize, Serializer};
 
 impl Serialize for CheckedProgram<'_> {
@@ -27,7 +27,10 @@ impl Serialize for CheckedProgram<'_> {
                             .expect("a checked program field has a resolved type");
                         ContractField {
                             name: field.name(),
-                            semantic_type,
+                            semantic_type: ContractType {
+                                program: self,
+                                value: semantic_type,
+                            },
                         }
                     })
                     .collect();
@@ -43,20 +46,87 @@ impl Serialize for CheckedProgram<'_> {
 
 #[derive(Serialize)]
 #[serde(rename = "CheckedProgram")]
-struct ContractProgram<'program> {
-    tables: Vec<ContractTable<'program>>,
+struct ContractProgram<'program, 'ast> {
+    tables: Vec<ContractTable<'program, 'ast>>,
 }
 
 #[derive(Serialize)]
 #[serde(rename = "Table")]
-struct ContractTable<'program> {
+struct ContractTable<'program, 'ast> {
     name: &'program str,
-    fields: Vec<ContractField<'program>>,
+    fields: Vec<ContractField<'program, 'ast>>,
 }
 
 #[derive(Serialize)]
 #[serde(rename = "Field")]
-struct ContractField<'program> {
+struct ContractField<'program, 'ast> {
     name: &'program str,
-    semantic_type: &'program SemanticType,
+    semantic_type: ContractType<'program, 'ast>,
+}
+
+struct ContractType<'program, 'ast> {
+    program: &'program CheckedProgram<'ast>,
+    value: &'program SemanticType,
+}
+
+impl Serialize for ContractType<'_, '_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let nested = |value| ContractType {
+            program: self.program,
+            value,
+        };
+        let scalar = match self.value {
+            SemanticType::Any => "Any",
+            SemanticType::Bool => "Bool",
+            SemanticType::Bytes => "Bytes",
+            SemanticType::Datetime => "Datetime",
+            SemanticType::Decimal => "Decimal",
+            SemanticType::Duration => "Duration",
+            SemanticType::Float => "Float",
+            SemanticType::Int => "Int",
+            SemanticType::Number => "Number",
+            SemanticType::Object => "Object",
+            SemanticType::Range => "Range",
+            SemanticType::String => "String",
+            SemanticType::Uuid => "Uuid",
+            SemanticType::None => "None",
+            SemanticType::Null => "Null",
+            SemanticType::Array {
+                element,
+                exact_length,
+            } => {
+                return serializer.serialize_newtype_variant(
+                    "SemanticType",
+                    0,
+                    "Array",
+                    &(nested(element), exact_length),
+                );
+            }
+            SemanticType::Set {
+                element,
+                max_distinct,
+            } => {
+                return serializer.serialize_newtype_variant(
+                    "SemanticType",
+                    0,
+                    "Set",
+                    &(nested(element), max_distinct),
+                );
+            }
+            SemanticType::Record(RecordTargets::Any) => "Record",
+            SemanticType::Record(RecordTargets::Tables(targets)) => {
+                let names = targets
+                    .iter()
+                    .map(|&id| {
+                        self.program
+                            .table(id)
+                            .expect("resolved target belongs to checked AST")
+                            .name()
+                    })
+                    .collect::<Vec<_>>();
+                return serializer.serialize_newtype_variant("SemanticType", 0, "Record", &names);
+            }
+        };
+        serializer.serialize_unit_variant("SemanticType", 0, scalar)
+    }
 }

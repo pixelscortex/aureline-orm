@@ -6,7 +6,6 @@
 /// types are carried by [`crate::TypeResolution`], so a `SemanticType` can
 /// never be mistaken for a proven contract.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "contract-serde", derive(serde::Serialize))]
 pub enum SemanticType {
     Any,
     Bool,
@@ -23,6 +22,7 @@ pub enum SemanticType {
     Uuid,
     None,
     Null,
+    Record(RecordTargets),
     /// An ordered homogeneous collection with an optional exact length.
     Array {
         element: Box<SemanticType>,
@@ -58,4 +58,13 @@ impl SemanticType {
             _ => return None,
         })
     }
+}
+
+/// A record identity is unrestricted or constrained to declared table identities.
+/// Constrained targets produced by the resolver are nonempty, deduplicated,
+/// and ordered by their compilation-local arena positions.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum RecordTargets {
+    Any,
+    Tables(Vec<aureline_ast::ids::TableId>),
 }

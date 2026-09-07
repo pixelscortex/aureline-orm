@@ -17,7 +17,6 @@ use crate::{
 };
 
 const UNSUPPORTED_SCALARS: &[&str] = &[
-    "record",
     "option",
     "geometry",
     "point",
@@ -64,6 +63,10 @@ fn resolve_application(
 ) -> TypeResolution<SemanticType> {
     let name = application.name().name();
     let span = application.name().span();
+    if name.eq_ignore_ascii_case("record") {
+        return crate::records::resolve(application, index, findings);
+    }
+
     if name.eq_ignore_ascii_case("array") || name.eq_ignore_ascii_case("set") {
         return crate::collections::resolve(application, index, findings);
     }
@@ -113,6 +116,9 @@ fn resolve_name(
     index: &ResolutionIndex<'_>,
     findings: &mut Findings<Finding>,
 ) -> TypeResolution<SemanticType> {
+    if name.eq_ignore_ascii_case("record") {
+        return TypeResolution::Resolved(SemanticType::Record(crate::RecordTargets::Any));
+    }
     if name.eq_ignore_ascii_case("array") {
         return TypeResolution::Resolved(SemanticType::Array {
             element: Box::new(SemanticType::Any),

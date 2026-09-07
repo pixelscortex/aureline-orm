@@ -8,6 +8,7 @@ mod analysis;
 mod collections;
 mod finding;
 mod index;
+mod records;
 mod reporting;
 mod resolver;
 mod semantic_type;
@@ -19,7 +20,7 @@ pub use analysis::{Analysis, CheckedProgram};
 pub use finding::{ArgumentRole, Finding, UnsupportedTypeSyntaxKind};
 pub use index::{FieldResolution, ResolutionIndex, TableResolution};
 pub use reporting::{Findings, Reported, TypeResolution};
-pub use semantic_type::SemanticType;
+pub use semantic_type::{RecordTargets, SemanticType};
 
 /// Collects declarations, judges duplicates, and resolves every field type.
 #[must_use]
