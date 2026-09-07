@@ -12,10 +12,11 @@ mod records;
 mod reporting;
 mod resolver;
 mod semantic_type;
+mod type_display;
 mod unions;
 
 pub use analysis::{Analysis, CheckedProgram};
-pub use finding::{ArgumentRole, Finding, UnsupportedTypeSyntaxKind};
+pub use finding::{ArgumentRole, Finding};
 pub use index::{FieldResolution, ResolutionIndex, TableResolution};
 pub use reporting::{Findings, Reported, TypeResolution};
 pub use semantic_type::{FieldPresence, RecordTargets, SemanticType};

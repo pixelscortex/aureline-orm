@@ -25,6 +25,8 @@ pub enum SemanticType {
     Record(RecordTargets),
     /// Canonical alternatives; ordering is structural, not an assignability relation.
     Union(Vec<SemanticType>),
+    /// An ordered heterogeneous value with exact member arity.
+    Tuple(Vec<SemanticType>),
     /// An ordered homogeneous collection with an optional exact length.
     Array {
         element: Box<SemanticType>,

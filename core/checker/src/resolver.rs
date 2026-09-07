@@ -11,7 +11,6 @@ use aureline_ast::ast::SourceType;
 
 use crate::{
     Finding, Findings, TypeResolution,
-    finding::UnsupportedTypeSyntaxKind,
     index::{ResolutionIndex, TableResolution},
     semantic_type::SemanticType,
 };
@@ -39,13 +38,13 @@ pub(crate) fn resolve(
         SourceType::Name(name) => resolve_name(name.name(), name.span(), index, findings),
         SourceType::Application(application) => resolve_application(application, index, findings),
         SourceType::Union(union) => crate::unions::resolve(union, index, findings),
-        SourceType::Tuple(tuple) => invalid(
-            findings,
-            Finding::UnsupportedTypeSyntax {
-                kind: UnsupportedTypeSyntaxKind::Tuple,
-                span: tuple.span(),
-            },
-        ),
+        SourceType::Tuple(tuple) => match resolve_members(tuple.members(), index, findings) {
+            TypeResolution::Resolved(members) => {
+                TypeResolution::Resolved(SemanticType::Tuple(members))
+            }
+            TypeResolution::Unknown => TypeResolution::Unknown,
+            TypeResolution::Invalid(proof) => TypeResolution::Invalid(proof),
+        },
     }
 }
 
@@ -178,4 +177,37 @@ fn is_unsupported(name: &str) -> bool {
     UNSUPPORTED_SCALARS
         .iter()
         .any(|candidate| name.eq_ignore_ascii_case(candidate))
+}
+
+/// Resolves an ordered collection of source members through the shared resolver.
+///
+/// Every member is visited even after an invalid outcome so independent
+/// Findings remain visible. The first invalid proof wins the enclosing
+/// outcome; an unknown outcome is returned only when no member is invalid.
+pub(crate) fn resolve_members(
+    members: &[SourceType],
+    index: &ResolutionIndex<'_>,
+    findings: &mut Findings<Finding>,
+) -> TypeResolution<Vec<SemanticType>> {
+    let mut resolved = Vec::with_capacity(members.len());
+    let mut first_invalid = None;
+    let mut has_unknown = false;
+
+    for member in members {
+        match resolve(member, index, findings) {
+            TypeResolution::Resolved(member) => resolved.push(member),
+            TypeResolution::Unknown => has_unknown = true,
+            TypeResolution::Invalid(proof) => {
+                if first_invalid.is_none() {
+                    first_invalid = Some(proof);
+                }
+            }
+        }
+    }
+
+    match (first_invalid, has_unknown) {
+        (Some(proof), _) => TypeResolution::Invalid(proof),
+        (None, true) => TypeResolution::Unknown,
+        (None, false) => TypeResolution::Resolved(resolved),
+    }
 }

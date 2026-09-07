@@ -134,6 +134,13 @@ impl<'ast> Analysis<'ast> {
 }
 
 impl<'ast> CheckedProgram<'ast> {
+    /// Returns a canonical string for a field's checked semantic type.
+    #[must_use]
+    pub fn format_type(&self, id: FieldId) -> Option<String> {
+        self.type_of_field(id)
+            .map(|ty| crate::type_display::format_type(self, ty))
+    }
+
     /// Derives field presence from the resolved outer type, without revisiting syntax.
     #[must_use]
     pub fn field_presence(&self, id: FieldId) -> Option<crate::FieldPresence> {

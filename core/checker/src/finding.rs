@@ -32,11 +32,6 @@ pub enum Finding {
     UnsupportedType { name: String, span: SourceSpan },
     /// A declared table name was used as a type instead of `record<Name>`.
     BareTableType { name: String, span: SourceSpan },
-    /// A recursive type form belongs to a later semantic slice.
-    UnsupportedTypeSyntax {
-        kind: UnsupportedTypeSyntaxKind,
-        span: SourceSpan,
-    },
     /// The application argument count is outside the constructor's accepted range.
     WrongArity {
         name: String,
@@ -66,12 +61,6 @@ pub enum Finding {
         raw: String,
         span: SourceSpan,
     },
-}
-
-/// A source type shape whose semantic contract is owned by a later slice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UnsupportedTypeSyntaxKind {
-    Tuple,
 }
 
 /// The semantic role required at an application argument position.

@@ -12,7 +12,7 @@ use aureline_ast::{
 };
 
 use crate::{
-    Finding, Findings, Reported, TypeResolution,
+    Finding, Findings, TypeResolution,
     finding::ArgumentRole,
     index::ResolutionIndex,
     resolver,
@@ -25,24 +25,10 @@ pub(crate) fn resolve(
     index: &ResolutionIndex<'_>,
     findings: &mut Findings<Finding>,
 ) -> TypeResolution<SemanticType> {
-    let mut members = Vec::with_capacity(union.members().len());
-    let mut first_invalid = None;
-    let mut has_unknown = false;
-
-    for member in union.members() {
-        match resolver::resolve(member, index, findings) {
-            TypeResolution::Resolved(member) => members.push(member),
-            TypeResolution::Unknown => has_unknown = true,
-            TypeResolution::Invalid(proof) => remember(&mut first_invalid, proof),
-        }
-    }
-
-    if let Some(proof) = first_invalid {
-        TypeResolution::Invalid(proof)
-    } else if has_unknown {
-        TypeResolution::Unknown
-    } else {
-        TypeResolution::Resolved(normalize(members))
+    match resolver::resolve_members(union.members(), index, findings) {
+        TypeResolution::Resolved(members) => TypeResolution::Resolved(normalize(members)),
+        TypeResolution::Unknown => TypeResolution::Unknown,
+        TypeResolution::Invalid(proof) => TypeResolution::Invalid(proof),
     }
 }
 
@@ -153,10 +139,4 @@ fn merge_records(records: Vec<RecordTargets>) -> RecordTargets {
     tables.sort_unstable_by_key(|table| table.into_index());
     tables.dedup();
     RecordTargets::Tables(tables)
-}
-
-fn remember(first: &mut Option<Reported>, proof: Reported) {
-    if first.is_none() {
-        *first = Some(proof);
-    }
 }
