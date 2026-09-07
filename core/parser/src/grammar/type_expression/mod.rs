@@ -9,9 +9,7 @@
 //!
 //! 1. primary expressions: applications (`array<string>`), tuples
 //!    (`[string, int]`), and bare names (`string`);
-//! 2. recognized unsupported postfix forms (`string?` and `string[]`), retained
-//!    so they can produce directed diagnostics;
-//! 3. unions (`string | int`).
+//! 2. unions (`string | int`).
 //!
 //! Application arguments and tuple members recurse through the complete parser,
 //! so lower-precedence unions remain valid inside them:
@@ -32,13 +30,23 @@ mod parsed;
 mod sequence;
 mod tuple;
 mod union;
-mod unsupported_postfix;
 
 use chumsky::prelude::*;
 
 use super::state::{ParserExtra, TokenInput};
 pub(in crate::grammar) use parsed::ParsedTypeExpression;
 
+/// Consumes one complete source type, leaving its enclosing comma, closing
+/// delimiter, or field boundary to the caller. Nested applications and tuples
+/// consume their own delimiters. This emits a valid type or a recovered
+/// structural problem and does not allocate declarations in the AST.
+///
+/// `box<A | B>` builds a union argument inside an application; `box<A |>`
+/// carries the missing-member problem through the application's closing `>`.
+///
+/// In these parser signatures, `'src` owns borrowed source spelling and
+/// `'tokens` owns the token input; `'src: 'tokens` keeps spelling alive while
+/// parsing. `impl Parser` describes a parser, rather than an already parsed value.
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra> {
     recursive(|type_expression| {
@@ -46,8 +54,8 @@ pub(super) fn parser<'tokens, 'src: 'tokens>()
         let tuple = tuple::parser(type_expression.clone());
         let name = name::parser();
 
-        let primary = choice((application, tuple, name));
-        let member = unsupported_postfix::parser(primary).boxed();
+        // Applications precede names because both begin with an identifier.
+        let member = choice((application, tuple, name)).boxed();
 
         union::parser(member).boxed()
     })

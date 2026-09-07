@@ -348,6 +348,7 @@ fn missing_tuple_separators_are_typed_in_recursive_contexts() {
         ("table T schemafull { value [int string bool] }", "string"),
         ("table T schemafull { value [A | B C] }", "C"),
         ("table T schemafull { value [int [string]] }", "[string]"),
+        ("table T schemafull { value [string[]] }", "[]"),
     ] {
         let start = source
             .rfind(adjacent)
@@ -367,15 +368,40 @@ fn missing_tuple_separators_are_typed_in_recursive_contexts() {
 }
 
 #[test]
-fn postfix_empty_brackets_direct_callers_to_array_application() {
+fn postfix_empty_brackets_are_unexpected_at_the_opening_bracket() {
     let errors = aureline_parser::parse("table T schemafull { value string[] }")
-        .expect_err("array types use array<T>, not postfix brackets");
+        .expect_err("postfix brackets are outside the supported type grammar");
     assert_eq!(
         errors,
-        vec![SyntaxProblem::PostfixArrayType {
-            span: span(SourceId::new(0), 33, 35),
+        vec![SyntaxProblem::UnexpectedToken {
+            span: span(SourceId::new(0), 33, 34),
         }]
     );
+}
+
+#[test]
+fn unsupported_postfix_tokens_remain_precise_in_recursive_types() {
+    for (source, token) in [
+        ("table T schemafull { value array<string?> }", '?'),
+        ("table T schemafull { value array<string[]> }", '['),
+        ("table T schemafull { value [string?] }", '?'),
+        ("table T schemafull { value A | string? }", '?'),
+        ("table T schemafull { value A | string[] }", '['),
+    ] {
+        let start = source
+            .rfind(token)
+            .expect("the source contains the postfix token");
+        let start = u32::try_from(start).expect("the short source fits text offsets");
+        let errors = aureline_parser::parse(source)
+            .expect_err("unsupported postfix syntax cannot enter a recursive source type");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::UnexpectedToken {
+                span: span(SourceId::new(0), start, start + 1),
+            }],
+            "{source}"
+        );
+    }
 }
 
 #[test]
@@ -522,12 +548,12 @@ fn collection_shapes_preserve_current_public_behavior() {
 }
 
 #[test]
-fn postfix_optional_type_syntax_directs_callers_to_option_application() {
+fn postfix_optional_type_syntax_is_unexpected_at_the_question_mark() {
     let errors = aureline_parser::parse("table User schemafull { value string? }")
-        .expect_err("optional types use option<T>, not postfix question marks");
+        .expect_err("postfix question marks are outside the supported type grammar");
     assert_eq!(
         errors,
-        vec![SyntaxProblem::PostfixOptionalType {
+        vec![SyntaxProblem::UnexpectedToken {
             span: span(SourceId::new(0), 36, 37),
         }]
     );
@@ -782,89 +808,41 @@ fn identifier_punctuation_reports_its_specific_boundary() {
             "table User@Name schemafull {}",
             IdentifierProblem::ContainsPunctuation,
         ),
-        (
-            "table User?Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User<Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User>Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User,Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User??Name schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User?Name,More schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User?Name , More schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User?1 schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
-        (
-            "table User?table schemafull {}",
-            IdentifierProblem::ContainsPunctuation,
-        ),
     ] {
         assert_invalid_identifier(source, problem, span(SourceId::new(0), 10, 11));
     }
+}
 
-    let errors = aureline_parser::parse("table array<string> schemafull {}")
-        .expect_err("an applied type shape cannot be a table name");
-    assert_eq!(
-        errors,
-        vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsPunctuation,
-            span: span(SourceId::new(0), 11, 12),
-        }]
-    );
-
-    let errors = aureline_parser::parse("table array<3> schemafull {}")
-        .expect_err("an integer argument shape cannot be a table name");
-    assert_eq!(
-        errors,
-        vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsPunctuation,
-            span: span(SourceId::new(0), 11, 12),
-        }]
-    );
-
-    let errors = aureline_parser::parse("table array<string,3> schemafull {}")
-        .expect_err("a multi-argument application shape cannot be a table name");
-    assert_eq!(
-        errors,
-        vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsPunctuation,
-            span: span(SourceId::new(0), 11, 12),
-        }]
-    );
-
+#[test]
+fn table_headers_reject_structural_punctuation_at_the_first_unexpected_token() {
     for source in [
+        "table User?Name schemafull {}",
+        "table User<Name schemafull {}",
+        "table User>Name schemafull {}",
+        "table User,Name schemafull {}",
+        "table User??Name schemafull {}",
+        "table User?Name,More schemafull {}",
+        "table User?Name , More schemafull {}",
+        "table User?1 schemafull {}",
+        "table User?table schemafull {}",
         "table User ? Name schemafull {}",
-        "table User schemafull { na ? me string }",
+        "table array<string> schemafull {}",
+        "table array<3> schemafull {}",
+        "table array<string,3> schemafull {}",
     ] {
+        let start = source
+            .find(['?', '<', '>', ','])
+            .expect("the table header contains structural punctuation");
+        let start = u32::try_from(start).expect("the short source fits text offsets");
         let errors = aureline_parser::parse(source)
-            .expect_err("separate punctuation still violates the declared name");
-        assert!(matches!(
-            errors.as_slice(),
-            [SyntaxProblem::InvalidIdentifier {
-                problem: IdentifierProblem::ContainsPunctuation,
-                ..
-            }]
-        ));
+            .expect_err("a schema mode must follow the single table-name token");
+        assert_eq!(
+            errors,
+            vec![SyntaxProblem::UnexpectedToken {
+                span: span(SourceId::new(0), start, start + 1),
+            }],
+            "{source}"
+        );
     }
 }
 
@@ -929,34 +907,32 @@ fn backtick_escaped_identifier_is_reserved() {
 }
 
 #[test]
-fn table_identifier_cannot_contain_whitespace() {
+fn table_header_reports_the_token_in_the_schema_mode_slot() {
     let errors = aureline_parser::parse("table User Profile schemafull {}")
-        .expect_err("a table identifier cannot contain whitespace");
+        .expect_err("the next grammatical token after the table name must be a schema mode");
 
     assert_eq!(
         errors,
-        vec![SyntaxProblem::InvalidIdentifier {
-            problem: IdentifierProblem::ContainsWhitespace,
-            span: span(SourceId::new(0), 10, 11),
+        vec![SyntaxProblem::UnexpectedToken {
+            span: span(SourceId::new(0), 11, 18),
         }]
     );
 }
 
 #[test]
-fn field_identifier_cannot_contain_whitespace() {
-    for source in [
-        "table User schemafull { first name string }",
-        "table User schemafull { first name array<string> }",
-        "table User schemafull { first name [string] }",
+fn field_reports_extra_material_after_one_name_and_one_type() {
+    for (source, end) in [
+        ("table User schemafull { first name string }", 41),
+        ("table User schemafull { first name array<string> }", 40),
+        ("table User schemafull { first name [string] }", 36),
     ] {
         let errors = aureline_parser::parse(source)
-            .expect_err("a field identifier cannot contain whitespace");
+            .expect_err("a complete field must end at a physical boundary");
 
         assert_eq!(
             errors,
-            vec![SyntaxProblem::InvalidIdentifier {
-                problem: IdentifierProblem::ContainsWhitespace,
-                span: span(SourceId::new(0), 29, 30),
+            vec![SyntaxProblem::UnexpectedToken {
+                span: span(SourceId::new(0), 35, end),
             }]
         );
     }
@@ -1059,9 +1035,10 @@ fn field_names_share_the_identifier_boundary() {
 }
 
 #[test]
-fn structural_type_punctuation_in_field_names_retains_the_first_violation() {
+fn fields_report_structural_punctuation_where_a_type_is_required() {
     for candidate in [
         "na?me",
+        "na ? me",
         "na<me",
         "na>me",
         "na,me",
@@ -1084,11 +1061,10 @@ fn structural_type_punctuation_in_field_names_retains_the_first_violation() {
         let start = u32::try_from(candidate_start + punctuation_offset)
             .expect("the short contract source fits Aureline text offsets");
         let errors = aureline_parser::parse(&source)
-            .expect_err("structural punctuation cannot occur in a field name");
+            .expect_err("the next token cannot begin the required source type");
         assert_eq!(
             errors,
-            vec![SyntaxProblem::InvalidIdentifier {
-                problem: IdentifierProblem::ContainsPunctuation,
+            vec![SyntaxProblem::UnexpectedToken {
                 span: span(SourceId::new(0), start, start + 1),
             }]
         );
@@ -1096,21 +1072,23 @@ fn structural_type_punctuation_in_field_names_retains_the_first_violation() {
 }
 
 #[test]
-fn postfix_array_brackets_are_identifier_punctuation_in_declared_names() {
-    for (source, opening) in [
-        ("table User[] schemafull {}", 10),
-        ("table User schemafull { User[] string }", 28),
+fn adjacent_brackets_follow_the_surrounding_declaration_grammar() {
+    for (source, start, end) in [
+        ("table User[] schemafull {}", 10, 11),
+        ("table User schemafull { User[] string }", 31, 37),
     ] {
         let errors = aureline_parser::parse(source)
-            .expect_err("postfix brackets cannot occur in a declared name");
+            .expect_err("the next token must fit the declaration grammar");
         assert_eq!(
             errors,
-            vec![SyntaxProblem::InvalidIdentifier {
-                problem: IdentifierProblem::ContainsPunctuation,
-                span: span(SourceId::new(0), opening, opening + 1),
+            vec![SyntaxProblem::UnexpectedToken {
+                span: span(SourceId::new(0), start, end),
             }]
         );
     }
+
+    aurl_test!("table User schemafull { User[] }")
+        .parses_as("(SourceFile (Table User Schemafull (Field User (Tuple))))");
 }
 
 #[test]

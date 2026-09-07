@@ -1,8 +1,9 @@
 //! Public, source-spanned syntax problems returned by the parser entrypoints.
 //!
-//! Expected malformed language forms receive stable typed variants so callers
-//! can offer directed messages without inspecting parser-library errors. Each
-//! problem identifies the exact source bytes that caused it.
+//! Malformed supported structures receive typed variants so callers can offer
+//! directed messages without inspecting parser-library errors. Unexpected
+//! tokens use the general grammar problem. Each problem identifies the exact
+//! source bytes that caused it; public Diagnostic codes belong to later rendering.
 
 use aureline_ast::source::{SourceId, SourceSpan, TextRange, TextSize};
 use chumsky::prelude::SimpleSpan;
@@ -11,9 +12,9 @@ use chumsky::prelude::SimpleSpan;
 /// `[A-Za-z_][A-Za-z0-9_]*`.
 ///
 /// The lexer reports violations it can identify without grammar context, such
-/// as `User.Name`. The grammar reports context-dependent violations, such as
-/// `User?Name` in a table-name slot, because `?` is also legitimate structural
-/// input to the type grammar.
+/// as `User.Name`. The grammar can also reject a pure integer token in a
+/// declared-name slot. Structural punctuation is handled by the surrounding
+/// grammar as an unexpected token, rather than reinterpreted as part of a name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IdentifierProblem {
     /// An identifier began with an ASCII digit.
@@ -37,15 +38,10 @@ pub enum IdentifierProblem {
     ContainsHyphen,
     /// An identifier contained another ASCII punctuation character.
     ///
-    /// Examples include `User@Name`, `User/Name`, and contextual structural
-    /// punctuation such as `User?Name` or `array<string>` in a declared-name
-    /// slot. The problem span identifies the first violation.
+    /// Examples include `User@Name` and `User/Name`, which the lexer recognizes
+    /// as contiguous identifier candidates. The span identifies the first
+    /// violation.
     ContainsPunctuation,
-    /// An identifier contained inline whitespace.
-    ///
-    /// Triggers: `table User Profile schemafull {}` and the field declaration
-    /// `first name string`. The span covers the spaces/tabs that split the name.
-    ContainsWhitespace,
     /// A name used backticks, which Aureline reserves rather than accepting as
     /// identifier escaping.
     ///
@@ -84,11 +80,6 @@ pub enum SyntaxProblem {
     ///
     /// Trigger: `array<string,>`.
     TrailingTypeArgumentComma { span: SourceSpan },
-    /// A type used postfix `?`; `span` covers `?`. Optional types use
-    /// `option<T>`.
-    ///
-    /// Trigger: `string?`.
-    PostfixOptionalType { span: SourceSpan },
     /// A union pipe was missing a member on at least one side; `span` covers the
     /// offending `|`.
     ///
@@ -103,10 +94,6 @@ pub enum SyntaxProblem {
     /// Triggers include `[int string]`, `[int record<A>]`, and
     /// `[int [string]]`. The span covers the complete first adjacent member.
     MissingTupleSeparator { span: SourceSpan },
-    /// A type used postfix `[]`; `span` covers `[]`. Array types use `array<T>`.
-    ///
-    /// Trigger: `string[]`.
-    PostfixArrayType { span: SourceSpan },
     /// A block comment reached the end of input; `span` points at its opening
     /// delimiter.
     ///
@@ -117,7 +104,8 @@ pub enum SyntaxProblem {
     ///
     /// Examples include an unknown schema mode in `table T mystery {}` and the
     /// second field in `first string second int`, where no physical newline
-    /// separates the fields.
+    /// separates the fields. Unsupported postfix spellings such as `string?`
+    /// and `string[]` also fail at the next unexpected token.
     UnexpectedToken { span: SourceSpan },
 }
 

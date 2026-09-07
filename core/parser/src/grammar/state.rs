@@ -2,8 +2,8 @@
 //!
 //! Chumsky token spans remain source-relative byte ranges. [`ParserState`]
 //! supplies the source identity when an AST node or public problem needs a full
-//! [`SourceSpan`]. It also owns the AST builder and the lexer's otherwise
-//! discarded inline-whitespace channel.
+//! [`SourceSpan`]. It also owns the AST builder, which retains located comments
+//! and commits complete table declarations with their fields.
 
 use aureline_ast::{
     AstBuilder,
@@ -21,33 +21,18 @@ pub(super) type TokenInput<'tokens, 'src> =
 pub(super) struct ParserState {
     ast: AstBuilder,
     source: SourceId,
-    inline_whitespace: Vec<SimpleSpan>,
 }
 
 impl ParserState {
-    pub(super) fn new(
-        source: SourceId,
-        comments: Vec<Comment>,
-        inline_whitespace: Vec<SimpleSpan>,
-    ) -> Self {
+    pub(super) fn new(source: SourceId, comments: Vec<Comment>) -> Self {
         Self {
             ast: AstBuilder::new(comments),
             source,
-            inline_whitespace,
         }
     }
 
     pub(super) fn source_span(&self, span: SimpleSpan) -> SourceSpan {
         source_span(self.source, span)
-    }
-
-    pub(super) fn inline_whitespace_between(
-        &self,
-        left: SimpleSpan,
-        right: SimpleSpan,
-    ) -> Option<SimpleSpan> {
-        let gap = SimpleSpan::from(left.end..right.start);
-        self.inline_whitespace.contains(&gap).then_some(gap)
     }
 
     pub(super) fn ast_mut(&mut self) -> &mut AstBuilder {

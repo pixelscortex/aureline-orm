@@ -1,43 +1,17 @@
-//! Parses one physical table field into a staged field or recoverable problem.
+//! Parses one physical table Field into a staged Field or structural problem.
 //!
-//! A successful field has the token shape `identifier type-expression`, for
-//! example `name string` or `coordinates array<float, 3>`. The parser does not
-//! decide what a type name means; it only preserves the source expression.
+//! The complete Field grammar is `identifier type-expression`, terminated by a
+//! physical newline or the table's closing `}`. The terminator is only observed
+//! here; the table body consumes it. Type names remain meaning-free, so
+//! `owner record<User | Bot>` stages the exact name and source type without
+//! deciding whether any referenced type exists.
 //!
-//! Parsing proceeds in three stages:
-//!
-//! 1. The shared declared-name parser recognizes a name together with the field's
-//!    type and physical boundary. This keeps a short recovery from succeeding
-//!    while leaving tokens that hide a more precise problem.
-//! 2. A valid name produces [`ParsedField`], while type-expression and
-//!    declared-name recovery produces [`GrammarProblem`]. A consumed recursive
-//!    type can therefore carry a problem without becoming an invalid public
-//!    [`SourceType`].
-//! 3. The table parser compares staged field and header problems by source
-//!    position. Only a problem-free table allocates its fields, so rejected input
-//!    never leaves a partial table in the AST.
-//!
-//! Split-name recovery also consults inline-whitespace spans retained by the
-//! lexer. Token spans alone cannot distinguish whitespace from a removed comment,
-//! and only whitespace makes `first name string` an identifier-boundary problem.
-//!
-//! Representative flows:
-//!
-//! ```text
-//! owner record<User | Bot>
-//!   -> FieldOutcome::Field(name = "owner", type = application(record, union(User, Bot)))
-//!   -> FieldDecl after the surrounding table commits
-//!
-//! first name string
-//!   -> split-name recovery at the whitespace between `first` and `name`
-//!   -> FieldOutcome::Problem(IdentifierWhitespace)
-//!   -> no FieldDecl allocation
-//! ```
-//!
-//! In the parser signature, `'src` owns spellings borrowed from source text and
-//! `'tokens` owns the token slice Chumsky reads; `'src: 'tokens` keeps those
-//! spellings alive throughout parsing. `impl Parser` is the parser definition,
-//! not a parsed field value.
+//! Staging keeps allocation atomic at the surrounding table. A valid Field does
+//! not receive an arena ID until the complete table has parsed without a header
+//! or sibling Field problem. For malformed `first name string`, this parser
+//! consumes `first` as the name and `name` as the type, then reports the extra
+//! `string` through the ordinary unexpected-token path; it does not reconstruct
+//! `first name` as a malformed identifier.
 
 use aureline_ast::{TableFieldBuilder, ast::SourceType, source::SourceSpan, tokens::Token};
 use chumsky::prelude::*;
@@ -49,11 +23,11 @@ use super::{
     type_expression,
 };
 
-/// A valid field staged until its surrounding table is known to be valid.
+/// A valid Field staged until its surrounding table is known to be valid.
 ///
 /// It owns the exact name, source type, and spans needed for allocation, but no
 /// [`FieldId`](aureline_ast::ids::FieldId) yet. Delaying the ID prevents a bad
-/// sibling field from leaving a partial table in the AST.
+/// sibling Field from leaving a partial table in the AST.
 pub(super) struct ParsedField {
     span: SourceSpan,
     name: String,
@@ -62,60 +36,54 @@ pub(super) struct ParsedField {
 }
 
 impl ParsedField {
-    /// Allocates this staged field under the table being atomically constructed.
+    /// Allocates this staged Field under the table being atomically constructed.
     pub(super) fn alloc_in(self, fields: &mut TableFieldBuilder<'_>) {
         fields.alloc_field(self.span, self.name, self.name_span, self.source_type);
     }
 }
 
-/// The result of consuming one complete recognizable field shape.
+/// The result of consuming one complete recognizable Field shape.
 ///
-/// `Field` remains staged; `Problem` carries a directed name or type problem.
-/// Neither variant mutates the AST while the field parser runs.
+/// `Field` remains staged; `Problem` carries a directed name or structural type
+/// problem. Neither variant mutates the AST while this parser runs.
 pub(super) enum FieldOutcome {
     Field(ParsedField),
     Problem(GrammarProblem),
 }
 
-/// Parses `<declared-name> <type-expression>` up to a physical field boundary.
+/// Parses `<declared-name> <type-expression>` up to a physical Field boundary.
 ///
-/// The parser consumes the name and type, then looks ahead for newline or `}`
-/// without consuming that boundary; the table body owns separators and its
-/// closing delimiter. It returns [`FieldOutcome::Field`] for valid syntax or
-/// [`FieldOutcome::Problem`] for a recognized malformed name/type. Allocation is
-/// deferred to [`ParsedField::alloc_in`] after the table selects no problem.
+/// The parser visibly composes the name and type in source order. Its final
+/// `rewind` observes a newline or `}` without consuming it because the table body
+/// owns separators and the closing delimiter. A structurally valid result is
+/// staged for later allocation; a recovered type or integer-name problem is
+/// returned as [`FieldOutcome::Problem`].
+///
+/// In this signature, `'src` owns borrowed source spelling and `'tokens` owns
+/// the token input; `'src: 'tokens` keeps spelling alive while parsing.
+/// `impl Parser` describes a parser rather than an already parsed Field.
 pub(super) fn parser<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, TokenInput<'tokens, 'src>, FieldOutcome, ParserExtra> {
-    // Every declared-name alternative must reach a physical field boundary
-    // before it can win. `rewind` makes this a lookahead: the table body still
-    // consumes the newline or `}` after field classification. Without the guard,
-    // a short recovery could leave tokens that hide a more precise field problem.
-    let field_end = || {
-        choice((just(Token::Newline), just(Token::RBrace)))
-            .ignored()
-            .rewind()
-    };
+    let field_end = choice((just(Token::Newline), just(Token::RBrace)))
+        .ignored()
+        .rewind();
 
-    // Supplying type + boundary as the declared-name tail lets the shared name
-    // parser distinguish `owner record<User>` from `first name string`.
-    let following_name = type_expression::parser().then_ignore(field_end()).boxed();
-
-    declared_name::parser(following_name).map_with(|declared_name, context| match declared_name {
-        Ok(declared_name) => {
-            let name = declared_name.name;
-            let source_type = declared_name.following;
-            let field_span = context.span();
-            let state = &context.state().0;
-            match source_type.into_result() {
-                Ok(source_type) => FieldOutcome::Field(ParsedField {
-                    span: state.source_span(field_span),
-                    name: name.inner,
-                    name_span: state.source_span(name.span),
-                    source_type,
-                }),
-                Err(problem) => FieldOutcome::Problem(problem),
-            }
-        }
-        Err(problem) => FieldOutcome::Problem(problem),
-    })
+    declared_name::parser()
+        .then(type_expression::parser())
+        .then_ignore(field_end)
+        .map_with(
+            |(name, source_type), context| match (name, source_type.into_result()) {
+                (Err(problem), _) | (_, Err(problem)) => FieldOutcome::Problem(problem),
+                (Ok(name), Ok(source_type)) => {
+                    let field_span = context.span();
+                    let state = &context.state().0;
+                    FieldOutcome::Field(ParsedField {
+                        span: state.source_span(field_span),
+                        name: name.inner,
+                        name_span: state.source_span(name.span),
+                        source_type,
+                    })
+                }
+            },
+        )
 }

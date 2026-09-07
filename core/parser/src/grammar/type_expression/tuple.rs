@@ -26,6 +26,12 @@ use super::{
     sequence::{self, SequenceItem, SequenceShapeProblem},
 };
 
+/// Consumes both square brackets and their member/comma sequence. For
+/// `[A | B, C]`, recursive member results become an ordered tuple. For `[A,,B]`,
+/// the repeated comma selects a missing-member problem after `]` is consumed;
+/// staged members never become a partial public AST. Nested member delimiters
+/// belong to their parsers, while tuple commas and brackets belong here.
+/// See the enclosing module for the shared parser lifetime signature.
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
 ) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra>

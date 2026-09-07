@@ -27,6 +27,12 @@ use super::{
     sequence::{self, SequenceItem, SequenceShapeProblem},
 };
 
+/// Consumes the name and both angle delimiters, emitting a staged source type
+/// or structural problem. `array<float, 3>` becomes a name plus ordered type and
+/// integer arguments; `array<string,>` consumes `>` and returns the trailing-comma
+/// problem. Allocation of table and field identities belongs to the caller.
+/// Nested types own their delimiters; commas and `>` at this level belong here.
+/// See the enclosing module for the shared parser lifetime signature.
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     type_expression: P,
 ) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra>
@@ -41,8 +47,19 @@ where
         integer_argument,
     ))
     .boxed();
+    // Sequence spans identify an unexpected adjacent token, while the argument
+    // itself retains its complete source span. For `box<A []>`, report `[`;
+    // consuming the tuple still lets this application own its closing `>`.
+    let member = any().spanned().rewind().then(argument).map(
+        |(first, argument): (Spanned<Token<'src>>, _)| {
+            SequenceItem::Member(Spanned {
+                inner: argument,
+                span: first.span,
+            })
+        },
+    );
     let item = choice((
-        argument.spanned().map(SequenceItem::Member),
+        member,
         just(Token::Comma)
             .spanned()
             .map(|comma: Spanned<Token<'src>>| SequenceItem::Separator(comma.span)),
@@ -79,24 +96,16 @@ fn classify(
         match problem {
             SequenceShapeProblem::MissingMember(span)
             | SequenceShapeProblem::MissingSeparator(span) => {
-                return ParsedTypeExpression::application(
-                    Err(GrammarProblem::unexpected(span)),
-                    name.span,
-                    opening,
-                );
+                return ParsedTypeExpression::recovered(GrammarProblem::unexpected(span));
             }
             SequenceShapeProblem::TrailingSeparator(span) => trailing_comma = Some(span),
         }
     }
 
     if items.is_empty() {
-        return ParsedTypeExpression::application(
-            Err(GrammarProblem::empty_type_arguments(SimpleSpan::from(
-                opening.start..application_span.end,
-            ))),
-            name.span,
-            opening,
-        );
+        return ParsedTypeExpression::recovered(GrammarProblem::empty_type_arguments(
+            SimpleSpan::from(opening.start..application_span.end),
+        ));
     }
 
     let arguments = items.into_iter().filter_map(|item| match item {
@@ -109,32 +118,26 @@ fn classify(
         match argument.into_result(state) {
             Ok(argument) => converted.push(argument),
             Err(problem) => {
-                return ParsedTypeExpression::application(Err(problem), name.span, opening);
+                return ParsedTypeExpression::recovered(problem);
             }
         }
     }
 
     if let Some(comma) = trailing_comma {
-        return ParsedTypeExpression::application(
-            Err(GrammarProblem::trailing_type_argument_comma(comma)),
-            name.span,
-            opening,
-        );
+        return ParsedTypeExpression::recovered(GrammarProblem::trailing_type_argument_comma(
+            comma,
+        ));
     }
 
     let mut arguments = converted.into_iter();
     let first_argument = arguments
         .next()
         .expect("a non-empty application has a first argument");
-    ParsedTypeExpression::application(
-        Ok(SourceType::application(
-            name.inner,
-            state.source_span(name.span),
-            first_argument,
-            arguments.collect(),
-            state.source_span(application_span),
-        )),
-        name.span,
-        opening,
-    )
+    ParsedTypeExpression::valid(SourceType::application(
+        name.inner,
+        state.source_span(name.span),
+        first_argument,
+        arguments.collect(),
+        state.source_span(application_span),
+    ))
 }

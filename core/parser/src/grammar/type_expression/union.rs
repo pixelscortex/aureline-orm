@@ -22,6 +22,11 @@ use super::{
     sequence::{self, SequenceItem, SequenceShapeProblem},
 };
 
+/// Consumes a primary member and its pipe-separated continuation. The caller
+/// owns commas, enclosing delimiters, and field boundaries. `A | B` becomes an
+/// ordered union; `A |` carries a missing-member problem at the pipe. No AST
+/// declaration is allocated, even when valid member values have been staged.
+/// See the enclosing module for the shared parser lifetime signature.
 pub(super) fn parser<'tokens, 'src: 'tokens, P>(
     member: P,
 ) -> impl Parser<'tokens, TokenInput<'tokens, 'src>, ParsedTypeExpression, ParserExtra>

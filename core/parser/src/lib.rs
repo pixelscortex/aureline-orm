@@ -2,7 +2,7 @@
 //!
 //! The implementation is split into two explicit stages:
 //!
-//! - `lexer` classifies source characters, retains comments and layout spans,
+//! - `lexer` classifies source characters, retains located comments and newlines,
 //!   and reports character-level identifier problems;
 //! - `grammar` consumes only grammatical tokens, constructs the AST, and
 //!   recovers known malformed shapes into directed [`SyntaxProblem`] values.
@@ -15,7 +15,7 @@
 //!
 //! ```text
 //! user source:  table User schemafull { owner record<User | Bot> }
-//! lexer:       grammatical tokens + comment/layout spans
+//! lexer:       located grammatical tokens + comments
 //! grammar:     staged table and field outcomes, or a source-spanned problem
 //! builder:     TableId/FieldId ownership edges and source-order lists
 //! result:      Ast, or SyntaxProblem values with no partial Ast
@@ -34,9 +34,10 @@ pub use problem::{IdentifierProblem, SyntaxProblem};
 
 /// Classifies the grammatical tokens in one source document.
 ///
-/// Comments and inline whitespace are retained internally for parsing but do
-/// not appear in the returned stream. Use [`parse`] when source locations or
-/// syntax diagnostics beyond lexing are needed.
+/// Comments are retained internally for parsing, and inline spaces and tabs
+/// are skipped. Neither appears in the returned stream; physical newlines do.
+/// Use [`parse`] when source locations or syntax diagnostics beyond lexing are
+/// needed.
 ///
 /// # Errors
 ///

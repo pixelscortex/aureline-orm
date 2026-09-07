@@ -1,130 +1,31 @@
-//! Internal result carriers for recursive type parsing and declared-name reuse.
+//! Private results carried through recursive type syntax.
 //!
-//! A public [`SourceType`] can represent only valid syntax. Recursive parsing,
-//! however, must also carry a precise problem through enclosing tuples,
-//! applications, and unions so those parsers can consume their closing tokens.
-//! [`ParsedTypeExpression`] provides that private valid-or-recovered layer.
-//!
-//! It also records selected *outer-shape marks*. The declared-name grammar reuses
-//! the complete type parser to consume names such as `array<string>` or
-//! `User[]`; marks let it reinterpret the outer `<` or `[` as name punctuation
-//! without confusing punctuation nested inside an otherwise larger shape.
+//! A public [`SourceType`] represents valid syntax. The private carrier also
+//! holds a precise structural problem so an enclosing parser can finish consuming
+//! its delimiters. For `box<array<>>`, the inner application returns a recovered
+//! empty-argument problem; the outer application consumes its `>` and propagates
+//! that problem. No invalid source type or partial public AST is constructed.
 
-use aureline_ast::{
-    ast::{SourceType, TypeArgument},
-    tokens::Token,
-};
-use chumsky::prelude::{SimpleSpan, Spanned};
+use aureline_ast::ast::{SourceType, TypeArgument};
+use chumsky::prelude::Spanned;
 
 use super::super::{problem::GrammarProblem, state::ParserState};
 
-#[derive(Clone, Copy)]
-struct ApplicationMark {
-    opening: SimpleSpan,
-    joined_to_name: bool,
-}
-
-impl ApplicationMark {
-    const fn into_declared_name_problem(self) -> GrammarProblem {
-        if self.joined_to_name {
-            GrammarProblem::identifier_punctuation(self.opening)
-        } else {
-            GrammarProblem::unexpected(self.opening)
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-struct PostfixArrayMark {
-    opening: SimpleSpan,
-    joined_to_type: bool,
-}
-
-impl PostfixArrayMark {
-    const fn into_declared_name_problem(self) -> GrammarProblem {
-        if self.joined_to_type {
-            GrammarProblem::identifier_punctuation(self.opening)
-        } else {
-            GrammarProblem::unexpected(self.opening)
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-pub(super) struct PostfixArraySyntax {
-    pub(super) opening: SimpleSpan,
-    pub(super) brackets: SimpleSpan,
-}
-
 pub(in crate::grammar) struct ParsedTypeExpression {
     outcome: Result<SourceType, GrammarProblem>,
-    application: Option<ApplicationMark>,
-    postfix_array: Option<PostfixArrayMark>,
 }
 
 impl ParsedTypeExpression {
     pub(super) fn valid(source_type: SourceType) -> Self {
         Self {
             outcome: Ok(source_type),
-            application: None,
-            postfix_array: None,
         }
     }
 
     pub(super) fn recovered(problem: GrammarProblem) -> Self {
         Self {
             outcome: Err(problem),
-            application: None,
-            postfix_array: None,
         }
-    }
-
-    pub(super) fn application(
-        outcome: Result<SourceType, GrammarProblem>,
-        name: SimpleSpan,
-        opening: SimpleSpan,
-    ) -> Self {
-        Self {
-            outcome,
-            application: Some(ApplicationMark {
-                opening,
-                joined_to_name: name.end == opening.start,
-            }),
-            postfix_array: None,
-        }
-    }
-
-    pub(super) fn with_postfix(mut self, question: Option<Spanned<Token<'_>>>) -> Self {
-        if let (Ok(_), Some(question)) = (&self.outcome, question) {
-            self.outcome = Err(GrammarProblem::postfix_optional_type(question.span));
-        }
-        self
-    }
-
-    pub(super) fn with_postfix_array(mut self, syntax: Option<PostfixArraySyntax>) -> Self {
-        if let (Ok(source_type), Some(syntax)) = (&self.outcome, syntax) {
-            // Public type spans and parser token spans use the same source byte
-            // origin. Equal end/start boundaries therefore mean no whitespace or
-            // removed comment separated the type from `[`. The checked usize-to-
-            // u32 conversion also keeps oversized offsets from looking joined.
-            let source_end = source_type.span().range().end().get();
-            self.postfix_array = Some(PostfixArrayMark {
-                opening: syntax.opening,
-                joined_to_type: u32::try_from(syntax.opening.start)
-                    .is_ok_and(|opening| source_end == opening),
-            });
-            self.outcome = Err(GrammarProblem::postfix_array_type(syntax.brackets));
-        }
-        self
-    }
-
-    pub(in crate::grammar) fn declared_name_problem(&self) -> Option<GrammarProblem> {
-        self.application
-            .map(ApplicationMark::into_declared_name_problem)
-            .or_else(|| {
-                self.postfix_array
-                    .map(PostfixArrayMark::into_declared_name_problem)
-            })
     }
 
     pub(in crate::grammar) fn problem(&self) -> Option<GrammarProblem> {

@@ -8,10 +8,9 @@
 //!
 //! Structural type punctuation is intentionally not part of a candidate. The
 //! lexer must tokenize `array<string>`, `[A, B]`, `A | B`, and `string?` before
-//! it knows whether those forms are valid in their grammar position. When such
-//! punctuation is attached to a table or field name, the grammar's
-//! `declared_name` module reconstructs the token sequence and
-//! reports the contextual identifier problem.
+//! it knows whether those forms are valid in their grammar position. The
+//! surrounding grammar reports an unexpected token when punctuation cannot
+//! occupy the next slot; it does not reconstruct a compound declaration name.
 
 use aureline_ast::tokens::Token;
 use chumsky::prelude::*;

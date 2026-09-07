@@ -1,22 +1,22 @@
-//! Converts source text into grammar tokens without discarding source layout.
+//! Converts source text into located grammar tokens and comments.
 //!
 //! Lexing has two stages:
 //!
 //! 1. [`lexer`] scans the source and emits [`LexerOccurrence`] values. An
-//!    occurrence can be a grammatical token, a comment, an inline-whitespace
-//!    run, or a typed lexical problem.
+//!    occurrence can be a grammatical token, a comment, or a typed lexical
+//!    problem. Inline spaces and tabs are consumed without producing occurrences.
 //! 2. [`lex`] partitions those occurrences into [`LexedSource`]. The grammar
-//!    receives only `tokens`, while comments become AST data and whitespace
-//!    spans remain available to contextual name recovery.
+//!    receives only `tokens`, while comments become AST data.
 //!
 //! Keeping those channels separate is deliberate. Comments do not affect the
-//! grammar, but callers still need their exact source locations. Spaces and
-//! tabs usually do not affect the grammar either, but they remain available
-//! for diagnostics such as split declaration names.
+//! grammar, but callers still need their exact source locations. Physical
+//! newlines remain tokens because they separate fields, including newlines
+//! inside block comments. For `name /* note */ string\n`, the grammar receives
+//! `name`, `string`, and a newline; the comment travels separately to the AST.
 //!
 //! This module recognizes characters, not their grammatical role. In
 //! particular, `<`, `>`, `[`, `]`, `,`, `?`, and `|` are always ordinary
-//! structural tokens here because they are valid in type expressions:
+//! tokens here; the grammar decides which positions accept them:
 //!
 //! ```text
 //! array<string>
@@ -24,8 +24,9 @@
 //! User | Bot
 //! ```
 //!
-//! The grammar's `declared_name` module decides whether those same tokens
-//! violate a table or field name when they occur in a declared-name slot.
+//! For example, `<` can begin application arguments after a type name, but is
+//! unexpected where a table header requires a schema mode. Lexing does not
+//! reconstruct those tokens as part of a declaration name.
 
 mod comment;
 mod identifier;
@@ -48,7 +49,6 @@ pub(super) type LexerExtra = extra::Err<Cheap<SimpleSpan>>;
 pub(super) enum Lexeme<'src> {
     Token(Token<'src>),
     InvalidIdentifier(IdentifierProblem),
-    InlineWhitespace,
     Comment(CommentKind),
     UnterminatedBlockComment,
 }
@@ -56,7 +56,6 @@ pub(super) enum Lexeme<'src> {
 pub(crate) struct LexedSource<'src> {
     pub(super) tokens: Vec<TokenOccurrence<'src>>,
     pub(super) comments: Vec<Comment>,
-    pub(super) inline_whitespace: Vec<SimpleSpan>,
     pub(super) source: SourceId,
     pub(super) source_len: usize,
 }
@@ -82,7 +81,6 @@ pub(crate) fn lex(
 
     let mut tokens = Vec::new();
     let mut comments = Vec::new();
-    let mut inline_whitespace = Vec::new();
     for Spanned { inner, span } in occurrences {
         match inner {
             Lexeme::InvalidIdentifier(problem) => {
@@ -94,7 +92,6 @@ pub(crate) fn lex(
             Lexeme::Comment(kind) => {
                 comments.push(Comment::new(kind, source_span(source_id, span)));
             }
-            Lexeme::InlineWhitespace => inline_whitespace.push(span),
             Lexeme::UnterminatedBlockComment => {
                 let opening = SimpleSpan::from(span.start..span.start + 2);
                 return Err(vec![SyntaxProblem::UnterminatedBlockComment {
@@ -108,7 +105,6 @@ pub(crate) fn lex(
     Ok(LexedSource {
         tokens,
         comments,
-        inline_whitespace,
         source: source_id,
         source_len: source.len(),
     })
@@ -137,15 +133,7 @@ fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<LexerOccurrence<'src>>, Lex
             }]
         });
 
-    let inline_whitespace = one_of(" \t")
-        .repeated()
-        .at_least(1)
-        .map_with(|(), context| {
-            vec![Spanned {
-                inner: Lexeme::InlineWhitespace,
-                span: context.span(),
-            }]
-        });
+    let inline_whitespace = one_of(" \t").repeated().at_least(1).map(|()| Vec::new());
 
     choice((
         comment::line(),
