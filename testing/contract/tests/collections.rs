@@ -2,6 +2,38 @@ use aureline_ast::{ast::Ast, source::SourceId};
 use aureline_checker::{ArgumentRole, Finding, SemanticType, TypeResolution, check};
 
 #[test]
+fn deeply_nested_arrays_resolve_to_their_terminal_element() {
+    let mut source_type = String::from("string");
+    for _ in 0..128 {
+        source_type = format!("array<{source_type}>");
+    }
+    let source = format!("table T schemafull {{ value {source_type} }}");
+    let ast = parse(&source);
+    let analysis = check(&ast);
+    assert!(analysis.findings().is_empty());
+    let checked = analysis
+        .into_checked()
+        .expect("deeply nested arrays should produce a Checked Program");
+    let table = checked.tables()[0];
+    let field = checked.fields_of(table)[0];
+    let mut semantic_type = checked
+        .type_of_field(field)
+        .expect("the nested field has a semantic type");
+
+    for _ in 0..128 {
+        let SemanticType::Array {
+            element,
+            exact_length: None,
+        } = semantic_type
+        else {
+            panic!("expected another unconstrained array layer");
+        };
+        semantic_type = element;
+    }
+    assert_eq!(semantic_type, &SemanticType::String);
+}
+
+#[test]
 fn bare_and_constrained_collections_keep_their_distinct_contracts() {
     let ast = parse(
         "table Catalog schemafull {\n\
