@@ -1,0 +1,35 @@
+testing/contract/Cargo.toml
+  s_fc4f77fa4748ce::t_aa0e3eb3f731d8 15
+  s_fc4f77fa4748ce::t_aced4a2ad05000 14,18
+testing/contract/src/lib.rs
+  s_fc4f77fa4748ce::t_aced4a2ad05000 6-7,48-75
+  s_fc4f77fa4748ce::t_c45a86705b624b 76-78
+testing/contract/tests/reporting.rs
+  s_fc4f77fa4748ce::t_1b0d18fe9d3120 16,29-33,37-43,60,64
+  s_fc4f77fa4748ce::t_56b657339c7249 34,55,61
+  s_fc4f77fa4748ce::t_aced4a2ad05000 1-15,17-28,35-36,44-54,56-59,62-63
+core/checker/src/lib.rs
+  s_fc4f77fa4748ce::t_aced4a2ad05000 3
+  s_fc4f77fa4748ce::t_fa5881cfc6efaa 1-2,4-5,7-9
+core/checker/src/reporting.rs
+  s_fc4f77fa4748ce::t_fa5881cfc6efaa 1-39,41-84,91
+  s_fc4f77fa4748ce::t_a8c666f0719d9f 40,85-90
+Cargo.lock
+  s_fc4f77fa4748ce::t_ca93e6f239aa7c 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "80981f69580a7cf9d0ab18ccb1ded85d9f3da376",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
