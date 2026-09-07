@@ -11,12 +11,11 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
+aureline-ast = { path = "../../core/ast" }
+aureline-checker = { path = "../../core/checker" }
 aureline-parser = { path = "../../core/parser", features = ["contract-serde"] }
 chumsky = "0.13.0"
-serde = "1"
-
-[dev-dependencies]
-aureline-ast = { path = "../../core/ast" }
+serde = { version = "1", features = ["derive"] }
 
 [lints]
 workspace = true
