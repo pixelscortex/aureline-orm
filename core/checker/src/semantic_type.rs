@@ -96,7 +96,6 @@ impl PartialOrd for RecordTargets {
 /// Whether the resolved outer field contract permits absence (`NONE`).
 /// This says nothing about a stored `NULL` value or absence nested in a collection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "contract-serde", derive(serde::Serialize))]
 pub enum FieldPresence {
     Required,
     Optional,

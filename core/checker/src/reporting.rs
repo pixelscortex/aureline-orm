@@ -71,12 +71,6 @@ impl<F> Findings<F> {
         &self.values
     }
 
-    /// Consumes the collection and returns findings in report order.
-    #[must_use]
-    pub fn into_vec(self) -> Vec<F> {
-        self.values
-    }
-
     /// Returns whether generation may proceed from this collection.
     #[must_use]
     pub const fn generation_allowed(&self) -> bool {

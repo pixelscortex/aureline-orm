@@ -14,9 +14,6 @@ mod resolver;
 mod semantic_type;
 mod unions;
 
-#[cfg(feature = "contract-serde")]
-mod contract_serde;
-
 pub use analysis::{Analysis, CheckedProgram};
 pub use finding::{ArgumentRole, Finding, UnsupportedTypeSyntaxKind};
 pub use index::{FieldResolution, ResolutionIndex, TableResolution};

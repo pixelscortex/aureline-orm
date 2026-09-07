@@ -38,7 +38,6 @@ name = "aureline-checker"
 version = "0.0.0"
 dependencies = [
  "aureline-ast",
- "serde",
 ]
 
 [[package]]
