@@ -1,0 +1,20 @@
+testing/contract/tests/records.rs
+  s_fc4f77fa4748ce::t_727aed930c6c44 2,6-28,32,34,36-55,60,68-84,86-90,95,98,100-104,106-110,115-116,118-143,148,154,156-194,199-200,203,205-231,233-238,240-252,257-273
+  s_fc4f77fa4748ce::t_9bb1881375b2d3 274-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "333d8646f7f03d1770fa042956182baf994c6f62",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
