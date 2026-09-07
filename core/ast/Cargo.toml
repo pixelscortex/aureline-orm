@@ -10,7 +10,7 @@ license.workspace = true
 path = "src/lib.rs"
 
 [features]
-unstable-test-normalization = []
+contract-serde = []
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

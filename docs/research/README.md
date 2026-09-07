@@ -16,6 +16,7 @@ Background reading that decisions on the tracker refer to. These are **findings*
 - [`arc2-attribute-grammar.md`](arc2-attribute-grammar.md) — exhaustive reconstruction of attempt two's attribute and field grammar, with the full catalog, placement matrix, and every error case
 - [`arc2-surql-surface.md`](arc2-surql-surface.md) — exhaustive reconstruction of attempt two's embedded-SurrealQL surface: expressions, operators, record IDs, casts, statements, and every `Opaque` fallback site
 - [`convex-components-prior-art.md`](convex-components-prior-art.md) — how Convex packages schema, functions, state, exports, installed instances, table namespaces, and subtransactions into reusable backend modules
+- [`parser-diagnostics-timing.md`](parser-diagnostics-timing.md) — ownership and timing assessment for parser problems, semantic Findings, and the shared Diagnostic interface
 
 The two `arc2-*` files are the raw evidence behind the [Grammar](https://github.com/pixelscortex/aureline-orm/issues/39) roadmap page. That page is the readable summary; these are the receipts.
 
