@@ -7,6 +7,7 @@
 
 use aureline_ast::source::{SourceId, SourceSpan, TextRange, TextSize};
 use chumsky::prelude::SimpleSpan;
+use serde::Serialize;
 
 /// The violated part of Aureline's ASCII bare-identifier boundary,
 /// `[A-Za-z_][A-Za-z0-9_]*`.
@@ -15,7 +16,7 @@ use chumsky::prelude::SimpleSpan;
 /// as `User.Name`. The grammar can also reject a pure integer token in a
 /// declared-name slot. Structural punctuation is handled by the surrounding
 /// grammar as an unexpected token, rather than reinterpreted as part of a name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum IdentifierProblem {
     /// An identifier began with an ASCII digit.
     ///
@@ -51,7 +52,7 @@ pub enum IdentifierProblem {
 }
 
 /// A typed problem produced before the parser can construct a complete syntax tree.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub enum SyntaxProblem {
     /// The source byte length exceeds the largest Aureline text offset.
     ///

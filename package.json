@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.12.3",
   "scripts": {
+    "playground": "wasm-pack build core/wasm --target web --out-dir dist --no-pack && pnpm --filter @aureline/site dev",
     "build": "moon run :build",
     "check": "moon run :check",
     "test": "moon run :test",

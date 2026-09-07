@@ -57,6 +57,7 @@ version = "0.0.0"
 dependencies = [
  "aureline-ast",
  "chumsky",
+ "serde",
 ]
 
 [[package]]
@@ -73,6 +74,7 @@ dependencies = [
 name = "aureline-wasm"
 version = "0.0.0"
 dependencies = [
+ "aureline-ast",
  "aureline-parser",
  "console_error_panic_hook",
  "serde",
