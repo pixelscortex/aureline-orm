@@ -1,0 +1,39 @@
+core/checker/src/finding.rs
+  s_fc4f77fa4748ce::t_3ec61faf5e90a5 69-82,114
+core/checker/src/lib.rs
+  s_fc4f77fa4748ce::t_3ec61faf5e90a5 11,23
+core/checker/src/semantic_type.rs
+  s_fc4f77fa4748ce::t_3ec61faf5e90a5 25,62-69
+  s_fc4f77fa4748ce::t_f93fc3a8f789f9 70
+core/checker/src/resolver.rs
+  s_fc4f77fa4748ce::t_3ec61faf5e90a5 66-69,119-121
+testing/contract/tests/records.rs
+  s_fc4f77fa4748ce::t_61cf0a7490762f 59
+  s_fc4f77fa4748ce::t_3ec61faf5e90a5 1-40,65-120,141-246,249-257
+  s_fc4f77fa4748ce::t_0dd22471462023 41-58,60-64,121-140,247-248
+core/checker/src/contract_serde.rs
+  s_fc4f77fa4748ce::t_3ec61faf5e90a5 3,30-33,49-50,55,57,62,64-131
+core/checker/src/records.rs
+  s_fc4f77fa4748ce::t_0cf0e7957a2bcd 118,120
+  s_fc4f77fa4748ce::t_f49506731f9bc9 1-6,8-9,13-19,21-60,62-72,79-80,83-87,89-114,116,125-129,132-143,145-155
+  s_fc4f77fa4748ce::t_2d4821ced0f349 10-12,88,115,117,124,130-131,144
+  s_fc4f77fa4748ce::t_ace3c231e7c5f4 7,73-78,81-82,119
+  s_fc4f77fa4748ce::t_083bf44eeb0e8d 20,121-123
+  s_fc4f77fa4748ce::t_81a5fc53b43c18 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c5fe38a78fc90685b5e1f3337a999ddd816ae2fd",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
