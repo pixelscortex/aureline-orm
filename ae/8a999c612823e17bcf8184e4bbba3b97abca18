@@ -1,0 +1,24 @@
+core/checker/src/finding.rs
+  s_fc4f77fa4748ce::t_7efca1b2c917a2 20
+  s_fc4f77fa4748ce::t_8f3a26776271c6 29,32,34,49
+testing/contract/Cargo.toml
+  s_fc4f77fa4748ce::t_742c1ed05cd108 16-20
+testing/contract/src/lib.rs
+  s_fc4f77fa4748ce::t_d58aa7ff0e0ead 35-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ae8a999c612823e17bcf8184e4bbba3b97abca18",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
