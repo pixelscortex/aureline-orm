@@ -12,7 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 aureline-ast = { path = "../../core/ast" }
-aureline-checker = { path = "../../core/checker" }
+aureline-checker = { path = "../../core/checker", features = ["contract-serde"] }
 aureline-parser = { path = "../../core/parser", features = ["contract-serde"] }
 chumsky = "0.13.0"
 serde = { version = "1", features = ["derive"] }
