@@ -1,0 +1,21 @@
+testing/contract/tests/scalar_edges.rs
+  s_fc4f77fa4748ce::t_c15266a124da84 64-65,180-181,207-208
+  s_fc4f77fa4748ce::t_b9794323424e09 88-93,141,178,205
+  s_fc4f77fa4748ce::t_d5e0fc4756d2b7 1,4-9,14-17,19-26,28-50,55,62,66-71,76,80-87,94-104,110-111,113-119,124,143-168,173,182-194,199,206,209-211,213-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6313ff3b683ef846835013bbd53cc2998d55afef",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
