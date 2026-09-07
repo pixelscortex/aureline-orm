@@ -202,15 +202,15 @@ fn supported_scalars_produce_a_valid_checked_program_in_source_order() {
 fn unsupported_and_malformed_type_forms_are_reported_at_their_heads() {
     aurl_test!(
         "table Values schemafull {\n\
-           collection array<string>\n\
+           collection geometry<point>\n\
            malformed string<int>\n\
            typo FutureType<string>\n\
          }"
     )
     .findings(
         "(Findings
-            (UnsupportedType array)
-            (WrongArity string)
+            (UnsupportedType geometry)
+            (WrongArity string 0 0 1)
             (UnknownType FutureType))",
     );
 }

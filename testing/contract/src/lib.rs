@@ -112,14 +112,25 @@ impl AurlTest {
                 )
             },
         );
-        let findings = aureline_checker::check(&ast).findings().to_vec();
+        let analysis = aureline_checker::check(&ast);
         let view = Findings {
-            findings: &findings,
+            findings: analysis.findings(),
         };
         let actual = normalizer::normalize(&view)
             .unwrap_or_else(|error| panic!("could not normalize semantic Findings: {error}"));
 
         matcher::assert_matches(expected, &actual);
+        if analysis.has_errors() {
+            assert!(
+                analysis.into_checked().is_err(),
+                "error Findings must block generation"
+            );
+        } else {
+            assert!(
+                analysis.into_checked().is_ok(),
+                "a clean table schema must be checked"
+            );
+        }
     }
 
     /// Parses source, checks it, and compares its valid semantic program as a

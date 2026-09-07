@@ -5,6 +5,7 @@
 //! into consumer-facing diagnostics belongs to a later phase.
 
 mod analysis;
+mod collections;
 mod finding;
 mod index;
 mod reporting;
@@ -15,7 +16,7 @@ mod semantic_type;
 mod contract_serde;
 
 pub use analysis::{Analysis, CheckedProgram};
-pub use finding::{Finding, UnsupportedTypeSyntaxKind};
+pub use finding::{ArgumentRole, Finding, UnsupportedTypeSyntaxKind};
 pub use index::{FieldResolution, ResolutionIndex, TableResolution};
 pub use reporting::{Findings, Reported, TypeResolution};
 pub use semantic_type::SemanticType;

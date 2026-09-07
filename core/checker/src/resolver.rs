@@ -17,8 +17,6 @@ use crate::{
 };
 
 const UNSUPPORTED_SCALARS: &[&str] = &[
-    "array",
-    "set",
     "record",
     "option",
     "geometry",
@@ -66,12 +64,17 @@ fn resolve_application(
 ) -> TypeResolution<SemanticType> {
     let name = application.name().name();
     let span = application.name().span();
+    if name.eq_ignore_ascii_case("array") || name.eq_ignore_ascii_case("set") {
+        return crate::collections::resolve(application, index, findings);
+    }
+
     if SemanticType::scalar(name).is_some() {
         return invalid(
             findings,
             Finding::WrongArity {
                 name: name.to_owned(),
-                expected: 0,
+                minimum: 0,
+                maximum: 0,
                 actual: application.arguments().len(),
                 span,
             },
@@ -110,6 +113,18 @@ fn resolve_name(
     index: &ResolutionIndex<'_>,
     findings: &mut Findings<Finding>,
 ) -> TypeResolution<SemanticType> {
+    if name.eq_ignore_ascii_case("array") {
+        return TypeResolution::Resolved(SemanticType::Array {
+            element: Box::new(SemanticType::Any),
+            exact_length: None,
+        });
+    }
+    if name.eq_ignore_ascii_case("set") {
+        return TypeResolution::Resolved(SemanticType::Set {
+            element: Box::new(SemanticType::Any),
+            max_distinct: None,
+        });
+    }
     if let Some(scalar) = SemanticType::scalar(name) {
         return TypeResolution::Resolved(scalar);
     }

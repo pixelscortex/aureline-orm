@@ -1,11 +1,12 @@
 //! Valid, target-neutral contracts produced by static type resolution.
 
-/// A resolved `SurrealDB` scalar contract.
+/// A resolved, target-neutral `SurrealDB` value contract.
 ///
 /// Recovery is deliberately not represented here. Unknown and invalid source
 /// types are carried by [`crate::TypeResolution`], so a `SemanticType` can
 /// never be mistaken for a proven contract.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "contract-serde", derive(serde::Serialize))]
 pub enum SemanticType {
     Any,
     Bool,
@@ -22,6 +23,17 @@ pub enum SemanticType {
     Uuid,
     None,
     Null,
+    /// An ordered homogeneous collection with an optional exact length.
+    Array {
+        element: Box<SemanticType>,
+        exact_length: Option<u64>,
+    },
+    /// An ordered, deduplicated collection with an optional maximum distinct count.
+    /// See the sized-set ADR for the documented server compatibility gap.
+    Set {
+        element: Box<SemanticType>,
+        max_distinct: Option<u64>,
+    },
 }
 
 impl SemanticType {
