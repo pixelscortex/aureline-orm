@@ -213,3 +213,13 @@ fn scalar_spellings_follow_surrealdb_case_rules_while_table_names_remain_exact()
     let ast = parse("table User schemafull { value STRING }");
     assert!(check(&ast).findings().is_empty());
 }
+
+#[test]
+fn real_unsupported_type_keywords_retain_their_original_spelling() {
+    let ast = parse("table T schemafull { value TABLE }");
+    let analysis = check(&ast);
+    assert!(
+        matches!(analysis.findings(), [Finding::UnsupportedType { name, .. }] if name == "TABLE")
+    );
+    assert!(analysis.into_checked().is_err());
+}

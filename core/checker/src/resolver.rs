@@ -19,7 +19,7 @@ use crate::{
     semantic_type::SemanticType,
 };
 
-const UNSUPPORTED_SCALARS: &[&str] = &[
+const UNSUPPORTED_TYPES: &[&str] = &[
     "geometry",
     "point",
     "line",
@@ -31,6 +31,7 @@ const UNSUPPORTED_SCALARS: &[&str] = &[
     "file",
     "regex",
     "function",
+    "table",
 ];
 
 pub(crate) fn resolve(
@@ -178,7 +179,7 @@ fn invalid(findings: &mut Findings<Finding>, finding: Finding) -> TypeResolution
 }
 
 fn is_unsupported(name: &str) -> bool {
-    UNSUPPORTED_SCALARS
+    UNSUPPORTED_TYPES
         .iter()
         .any(|candidate| name.eq_ignore_ascii_case(candidate))
 }
