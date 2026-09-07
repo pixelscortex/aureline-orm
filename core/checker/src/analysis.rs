@@ -7,7 +7,7 @@ use aureline_ast::{
 };
 
 use crate::{
-    Finding, Findings, TypeResolution,
+    Finding, Findings, TypeResolution, id_contract,
     index::{ResolutionIndex, TableResolution, judge_duplicates},
     resolver,
     semantic_type::SemanticType,
@@ -22,6 +22,7 @@ use crate::{
 pub struct Analysis<'ast> {
     index: ResolutionIndex<'ast>,
     field_types: Vec<TypeResolution<SemanticType>>,
+    id_fields: Vec<Option<FieldId>>,
     findings: Findings<Finding>,
 }
 
@@ -31,6 +32,7 @@ pub struct Analysis<'ast> {
 pub struct CheckedProgram<'ast> {
     index: ResolutionIndex<'ast>,
     field_types: Vec<SemanticType>,
+    id_fields: Vec<Option<FieldId>>,
 }
 
 pub(crate) fn run(ast: &Ast) -> Analysis<'_> {
@@ -49,10 +51,12 @@ pub(crate) fn run(ast: &Ast) -> Analysis<'_> {
             field_types.push(outcome);
         }
     }
+    let id_fields = validate_id_fields(&index, &field_types, &mut findings);
 
     Analysis {
         index,
         field_types,
+        id_fields,
         findings,
     }
 }
@@ -118,6 +122,7 @@ impl<'ast> Analysis<'ast> {
         let Self {
             index,
             field_types,
+            id_fields,
             findings: _,
         } = self;
         let field_types = field_types
@@ -129,7 +134,11 @@ impl<'ast> Analysis<'ast> {
                 }
             })
             .collect();
-        Ok(CheckedProgram { index, field_types })
+        Ok(CheckedProgram {
+            index,
+            field_types,
+            id_fields,
+        })
     }
 }
 
@@ -142,15 +151,40 @@ impl<'ast> CheckedProgram<'ast> {
     }
 
     /// Derives field presence from the resolved outer type, without revisiting syntax.
+    ///
+    /// A validated explicit `id` is always required because every record has
+    /// an identity, including when its semantic type is `any`.
     #[must_use]
     pub fn field_presence(&self, id: FieldId) -> Option<crate::FieldPresence> {
         self.type_of_field(id).map(|ty| {
-            if ty.admits_none() {
-                crate::FieldPresence::Optional
-            } else {
+            let is_id = self.field(id).is_some_and(|field| {
+                self.id_fields
+                    .get(field.owner().into_index())
+                    .copied()
+                    .flatten()
+                    == Some(id)
+            });
+            if is_id || !ty.admits_none() {
                 crate::FieldPresence::Required
+            } else {
+                crate::FieldPresence::Optional
             }
         })
+    }
+
+    /// Returns the validated contract for a table's explicit `id` field.
+    ///
+    /// # Panics
+    ///
+    /// Panics if private validation data refers to a field without a resolved
+    /// type. Construction through the checker maintains this invariant.
+    #[must_use]
+    pub fn id_contract(&self, table: TableId) -> Option<crate::IdContract<'_>> {
+        let field_id = self.id_fields.get(table.into_index()).copied().flatten()?;
+        let semantic = self
+            .type_of_field(field_id)
+            .expect("a validated id has a resolved semantic type");
+        Some(id_contract::from_validated(field_id, semantic))
     }
 
     #[must_use]
@@ -185,4 +219,43 @@ impl<'ast> CheckedProgram<'ast> {
     pub fn type_of_field(&self, id: FieldId) -> Option<&SemanticType> {
         self.field_types.get(id.into_index())
     }
+}
+
+fn validate_id_fields(
+    index: &ResolutionIndex<'_>,
+    field_types: &[TypeResolution<SemanticType>],
+    findings: &mut Findings<Finding>,
+) -> Vec<Option<FieldId>> {
+    let mut id_fields = vec![None; index.tables().len()];
+
+    for &table_id in index.tables() {
+        let mut valid_id = None;
+        let candidates = index.field_candidates(table_id, "id");
+        for &field_id in candidates {
+            let field = index
+                .field(field_id)
+                .expect("an indexed id field belongs to the AST");
+
+            let outcome = field_types
+                .get(field_id.into_index())
+                .expect("an indexed field has a type resolution outcome");
+            let TypeResolution::Resolved(semantic) = outcome else {
+                continue;
+            };
+            if id_contract::validate_semantic_type(semantic) {
+                valid_id.get_or_insert(field_id);
+            } else {
+                findings.report(Finding::InvalidRecordKey {
+                    field: field_id,
+                    span: field.source_type().span(),
+                });
+            }
+        }
+
+        if candidates.len() == 1 {
+            id_fields[table_id.into_index()] = valid_id;
+        }
+    }
+
+    id_fields
 }

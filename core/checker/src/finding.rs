@@ -24,7 +24,7 @@ pub enum Finding {
         primary: SourceSpan,
         first: SourceSpan,
     },
-    /// A source type name is not part of the supported `SurrealDB` scalar
+    /// A source type name is not part of the supported `SurrealDB` type
     /// catalog and is not a declared table name.
     UnknownType { name: String, span: SourceSpan },
     /// A real `SurrealDB` type family is known, but this table slice does not
@@ -59,6 +59,11 @@ pub enum Finding {
     InvalidCollectionSize {
         name: String,
         raw: String,
+        span: SourceSpan,
+    },
+    /// A resolved type is valid for an ordinary field but not for top-level `id`.
+    InvalidRecordKey {
+        field: aureline_ast::ids::FieldId,
         span: SourceSpan,
     },
 }

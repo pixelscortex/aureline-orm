@@ -4,7 +4,7 @@ use aureline_checker::{FieldResolution, Finding, ResolutionIndex, TableResolutio
 #[test]
 fn resolution_distinguishes_missing_unique_and_all_ambiguous_candidates() {
     let ast = parse(
-        "table Alpha schemafull { id string\n id int\n id bool }\n\
+        "table Alpha schemafull { id string\n id int\n id uuid }\n\
          table User schemafull { id string }\n\
          table User schemaless { label string }",
     );
@@ -35,10 +35,10 @@ fn resolution_distinguishes_missing_unique_and_all_ambiguous_candidates() {
 #[test]
 fn duplicate_findings_are_grouped_by_check_then_source_order() {
     let ast = parse(
-        "table User schemafull { id string\n id int\n id bool }\n\
-         table User schemafull { id bool }\n\
-         table User schemafull { id bytes }\n\
-         table user schemafull { id string\n id bool }",
+        "table User schemafull { id string\n id int\n id uuid }\n\
+         table User schemafull { id uuid }\n\
+         table User schemafull { id uuid }\n\
+         table user schemafull { id string\n id uuid }",
     );
     let analysis = check(&ast);
     let findings = analysis.findings();
@@ -89,8 +89,8 @@ fn names_are_exact_case_sensitive_and_empty_tables_are_valid() {
 fn duplicate_findings_keep_later_primary_and_first_context_spans() {
     let ast = aureline_parser::parse_with_source(
         SourceId::new(11),
-        "table User schemafull { id string\n id int\n id bool }\n\
-         table User schemafull { id bool }",
+        "table User schemafull { id string\n id int\n id uuid }\n\
+         table User schemafull { id uuid }",
     )
     .expect("the duplicate declarations are valid syntax");
     let first_table = ast.root().tables()[0];
