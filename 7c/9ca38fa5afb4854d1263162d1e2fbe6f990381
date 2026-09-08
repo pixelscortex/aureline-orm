@@ -1,0 +1,41 @@
+core/wasm/moon.yml
+  s_fc4f77fa4748ce::t_5ac9ea138d81be 10,17,27,37,47
+core/wasm/package.json
+  s_fc4f77fa4748ce::t_5ac9ea138d81be 5
+core/wasm/Cargo.toml
+  s_fc4f77fa4748ce::t_5e7fbb6abe6c04 15
+  s_fc4f77fa4748ce::t_940a326f53802f 6
+core/wasm/src/lib.rs
+  s_fc4f77fa4748ce::t_2eee4ddd668081 167,478,512-526,531-533,535,537-561,584-592,596,599-601
+  s_fc4f77fa4748ce::t_5c4110d6ccb2a5 536
+  s_fc4f77fa4748ce::t_150475dd918872 108
+  s_fc4f77fa4748ce::t_ce665ccca44409 562-583
+  s_fc4f77fa4748ce::t_9190b93f6d5de1 6-8
+  s_fc4f77fa4748ce::t_78d9d21d963c7d 59-63
+  s_fc4f77fa4748ce::t_7e4306b6f95772 462-463
+  s_fc4f77fa4748ce::t_0a60b8cec4377c 166,169-175,241-244
+  s_fc4f77fa4748ce::t_5f2b7aedc61206 11,34-36,40-58,64-107,109-132,150-165,235-240,245-334,339-392,394-407,417-451,456-461,469-477
+  s_fc4f77fa4748ce::t_7cef8d7013d088 37-39,393,452-455
+  s_fc4f77fa4748ce::t_6fef8834668d6f 408-416,464-468
+  s_fc4f77fa4748ce::t_7e61defcf3aabe 335-338,527-530,534,593-595,597-598
+  s_fc4f77fa4748ce::t_68ce1ad3a81374 168
+  s_fc4f77fa4748ce::t_71f8df016aa6d5 479
+Cargo.lock
+  s_fc4f77fa4748ce::t_ba47549df3d4f0 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7c9ca38fa5afb4854d1263162d1e2fbe6f990381",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
