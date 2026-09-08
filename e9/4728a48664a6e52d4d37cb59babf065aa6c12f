@@ -1,0 +1,33 @@
+site/src/routes/playground/+page.svelte
+  s_fc4f77fa4748ce::t_ea3978da8245bc 339,342-349,368-374,397-400
+  s_fc4f77fa4748ce::t_c63aad8553db52 32-43,50-56
+  s_fc4f77fa4748ce::t_96bc1e9ed2b07a 146,288-289
+  s_fc4f77fa4748ce::t_44b5d4a99eba9f 285
+  s_fc4f77fa4748ce::t_a52e6b83df50bb 277,357
+  s_fc4f77fa4748ce::t_b4cbe28fa17524 17-31,44-49,57-61,66,68,72,75-76,83-90,95,105,117,165,169,180-181,184-185,188-189,192-193,196-198,205
+  s_fc4f77fa4748ce::t_8983f9e4bd61b9 4,16,62,65,67,69-71,73-74,80-82,91-94,96-99,101,103-104,108,111,114-116,119-121,130,138,140-145,147-164,166-167,182-183,186-187,190-191,194-195,201-204,206-208,212-213,216-225,227-233,239-276,278,280,282-284,286-287,290-306,308-315,317-330,332-338,351-356,358-364,375-396,401-407
+  s_fc4f77fa4748ce::t_0c133d28f53755 15
+  s_fc4f77fa4748ce::t_fdec05dfeead20 238
+  s_fc4f77fa4748ce::t_3b7fe5de699f5f 168,170-179,279,281,316,331
+  s_fc4f77fa4748ce::t_bb3e0de974e31d 199-200,340-341,350
+  s_fc4f77fa4748ce::t_56dd4b58f9edb1 365-367
+site/README.md
+  s_fc4f77fa4748ce::t_57f88ebd1f29b0 13
+  s_fc4f77fa4748ce::t_762a09c0a128e0 11,20,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e94728a48664a6e52d4d37cb59babf065aa6c12f",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
