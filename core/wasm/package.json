@@ -2,7 +2,7 @@
   "name": "@aureline/wasm",
   "version": "0.0.0",
   "type": "module",
-  "description": "Browser WebAssembly wrapper for Aureline syntax inspection.",
+  "description": "Browser WebAssembly wrapper for Aureline syntax and semantic inspection.",
   "license": "MIT OR Apache-2.0",
   "main": "./dist/aureline_wasm.js",
   "types": "./dist/aureline_wasm.d.ts",
