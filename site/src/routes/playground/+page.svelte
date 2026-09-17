@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { Debounced } from "runed";
+	import MigrationPanel from "$lib/components/MigrationPanel.svelte";
 	import init, { check, lexer, parse } from "@aureline/wasm";
 
 	type SourceSpan = { source: number; range: { start: number; end: number } };
@@ -59,9 +60,14 @@
 		| { status: "checked"; tables: CheckedTable[] }
 		| { status: "invalid"; phase: "syntax"; problems: SyntaxProblem[] }
 		| { status: "invalid"; phase: "semantic"; problems: SemanticProblem[] };
-	type Tab = "semantic" | "lexer" | "ast";
+	type Tab = "semantic" | "lexer" | "ast" | "migration";
 
 	const examples = [
+		{ label: "Migration demo", source: `table User schemafull {
+	id string
+	name string
+	tags set<string, 3>
+}` },
 		{
 			label: "A valid schema",
 			source: `table User schemafull {
@@ -105,7 +111,7 @@ table Event schemaless {
 	let semanticResult = $state<CheckResult | null>(null);
 	let runtimeError = $state<string | null>(null);
 	let wasmReady = $state(false);
-	let activeTab = $state<Tab>("semantic");
+	let activeTab = $state<Tab>("migration");
 	const debouncedSource = new Debounced(() => source, 300);
 
 	function runInspection(value: string) {
@@ -143,7 +149,7 @@ table Event schemaless {
 	}
 
 	function handleTabKeydown(event: KeyboardEvent) {
-		const tabs: Tab[] = ["lexer", "ast", "semantic"];
+		const tabs: Tab[] = ["lexer", "ast", "semantic", "migration"];
 		const current = tabs.indexOf(activeTab);
 		let next = current;
 		if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (current + 1) % tabs.length;
@@ -210,7 +216,7 @@ table Event schemaless {
 
 <svelte:head>
 	<title>Aureline playground</title>
-	<meta name="description" content="Explore Aureline syntax and static semantics in your browser." />
+	<meta name="description" content="Explore Aureline schemas and generate migrations in your browser." />
 </svelte:head>
 
 <main class="mx-auto w-full max-w-[1440px] px-4 pb-10 pt-28 sm:px-6 lg:px-10">
@@ -219,7 +225,7 @@ table Event schemaless {
 			<p class="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Aureline / browser compiler</p>
 			<h1 class="font-veloce text-5xl font-bold tracking-[-0.06em] sm:text-7xl">Playground</h1>
 			<p class="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-				Write a schema and see the lexer, syntax tree, and checked meaning update as you type.
+				Write a schema, generate a migration, then change it and watch your history grow.
 			</p>
 		</div>
 		<div class="flex flex-wrap gap-2" aria-label="Examples">
@@ -271,8 +277,8 @@ table Event schemaless {
 			<div class="border-b border-border px-4 pt-3 sm:px-5">
 				<div class="flex items-center justify-between gap-3">
 					<div>
-						<h2 class="text-sm font-bold">Inspection</h2>
-						<p class="mt-0.5 text-xs text-muted-foreground">Compiler output from the current source</p>
+						<h2 class="text-sm font-bold">Output</h2>
+						<p class="mt-0.5 text-xs text-muted-foreground">Live inspection and saved migrations</p>
 					</div>
 					{#if semanticStatus() === "checked"}
 						<span class="rounded-full bg-green-500/10 px-2.5 py-1 text-[11px] font-bold text-green-700 dark:text-green-300">Semantics valid</span>
@@ -286,7 +292,8 @@ table Event schemaless {
 					{#each [
 						{ id: "lexer" as Tab, label: "Lexer", hint: "tokens" },
 						{ id: "ast" as Tab, label: "AST", hint: "syntax tree" },
-						{ id: "semantic" as Tab, label: "Semantic", hint: "checked meaning" }
+						{ id: "semantic" as Tab, label: "Semantic", hint: "checked meaning" },
+							{ id: "migration" as Tab, label: "Migrations", hint: "schema history" }
 					] as tab}
 						<button
 							type="button"
@@ -306,6 +313,9 @@ table Event schemaless {
 			</div>
 
 			<div class="min-h-0 flex-1 overflow-auto p-4 sm:p-5">
+					<div id="panel-migration" class="scroll-mt-24" role="tabpanel" aria-labelledby="tab-migration" hidden={activeTab !== "migration"}>
+						<MigrationPanel {source} ready={wasmReady} />
+					</div>
 				{#if runtimeError}
 					<div class="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
 						<p class="font-bold">Compiler unavailable</p>
@@ -391,7 +401,7 @@ table Event schemaless {
 							<p class="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">Waiting for the lexer…</p>
 						{/if}
 					</div>
-				{:else}
+				{:else if activeTab === "ast"}
 					<div id="panel-ast" role="tabpanel" aria-labelledby="tab-ast">
 						<p class="mb-3 text-xs text-muted-foreground">Parsed table declarations and fields, in source order.</p>
 										{#if isParsed()}
