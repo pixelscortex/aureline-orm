@@ -48,6 +48,64 @@ pub(crate) fn field_contract(ty: &MigrationType) -> Result<FieldContract, Target
     })
 }
 
+/// Returns the wildcard descendants created implicitly by a parent DEFINE,
+/// ordered from `field[*]` outward. ALTER and REMOVE do not maintain them.
+///
+/// This mirrors the pinned target's `Kind::inner_kind` and
+/// `DefineFieldStatement::process_recursive_definitions`. In particular, a
+/// singleton union containing `any` still creates a definition, whereas bare
+/// `any` stops recursion. Tuple members never create wildcard definitions.
+/// Sized-set bounds belong to the parent's assertion and are absent from all
+/// native child types, including bounds below another collection or tuple.
+pub(crate) fn implicit_fields(ty: &MigrationType) -> Vec<MigrationType> {
+    let mut fields = Vec::new();
+    let mut current = inner_kind(&native_type(ty));
+    while let Some(kind) = current {
+        if matches!(&kind, MigrationType::Scalar(name) if name == "any") {
+            break;
+        }
+        current = inner_kind(&kind);
+        fields.push(kind);
+    }
+    fields
+}
+
+fn inner_kind(ty: &MigrationType) -> Option<MigrationType> {
+    match ty {
+        MigrationType::Array { element, .. } | MigrationType::Set { element, .. } => {
+            Some(element.as_ref().clone())
+        }
+        MigrationType::Union(members) => {
+            let kinds: Vec<_> = members.iter().filter_map(inner_kind).collect();
+            (!kinds.is_empty()).then_some(MigrationType::Union(kinds))
+        }
+        MigrationType::Scalar(_) | MigrationType::Record(_) | MigrationType::Tuple(_) => None,
+    }
+}
+
+fn native_type(ty: &MigrationType) -> MigrationType {
+    match ty {
+        MigrationType::Array {
+            element,
+            exact_length,
+        } => MigrationType::Array {
+            element: Box::new(native_type(element)),
+            exact_length: *exact_length,
+        },
+        MigrationType::Set { element, .. } => MigrationType::Set {
+            element: Box::new(native_type(element)),
+            max_distinct: None,
+        },
+        MigrationType::Union(members) => {
+            MigrationType::Union(members.iter().map(native_type).collect())
+        }
+        MigrationType::Tuple(members) => {
+            MigrationType::Tuple(members.iter().map(native_type).collect())
+        }
+        MigrationType::Scalar(_) | MigrationType::Record(_) => ty.clone(),
+    }
+}
+
 fn is_none(ty: &MigrationType) -> bool {
     matches!(ty, MigrationType::Scalar(name) if name == "none")
 }

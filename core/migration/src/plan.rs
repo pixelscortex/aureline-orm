@@ -1,4 +1,4 @@
-use crate::{MigrationModel, MigrationType, SchemaMode};
+use crate::{MigrationModel, MigrationType, SchemaMode, target};
 
 /// A consequence of the expected schema transition, without inspecting stored data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -43,18 +43,24 @@ pub enum Operation {
     DefineField {
         table: String,
         name: String,
+        /// Zero is the declared field; each additional level appends `[*]`.
+        element_depth: usize,
         ty: MigrationType,
         record_key: bool,
     },
     AlterField {
         table: String,
         name: String,
+        /// Zero is the declared field; each additional level appends `[*]`.
+        element_depth: usize,
         ty: MigrationType,
         record_key: bool,
     },
     RemoveField {
         table: String,
         name: String,
+        /// Zero is the declared field; each additional level appends `[*]`.
+        element_depth: usize,
     },
     RemoveTable {
         name: String,
@@ -98,6 +104,7 @@ impl MigrationPlan {
                         plan.operations.push(Operation::DefineField {
                             table: table_name.clone(),
                             name: name.clone(),
+                            element_depth: 0,
                             ty: field.ty.clone(),
                             record_key: field.record_key,
                         });
@@ -118,9 +125,11 @@ impl MigrationPlan {
                         plan.operations.push(Operation::AlterField {
                             table: table_name.clone(),
                             name: name.clone(),
+                            element_depth: 0,
                             ty: field.ty.clone(),
                             record_key: field.record_key,
                         });
+                        plan.element_changes(table_name, name, &old.ty, &field.ty);
                         plan.warn(
                             table_name,
                             Some(name),
@@ -136,17 +145,24 @@ impl MigrationPlan {
                 }
             }
         }
+        plan.removals(previous, current);
+        plan
+    }
+
+    fn removals(&mut self, previous: &MigrationModel, current: &MigrationModel) {
         // Remove fields only on surviving tables: REMOVE TABLE owns its fields.
         // Changing surviving record-link contracts precedes removal of their old targets.
         for (table_name, table) in &previous.tables {
             if let Some(current_table) = current.tables.get(table_name) {
                 for (name, field) in &table.fields {
                     if !current_table.fields.contains_key(name) {
-                        plan.operations.push(Operation::RemoveField {
-                            table: table_name.clone(),
-                            name: name.clone(),
-                        });
-                        plan.warn(
+                        self.remove_elements(
+                            table_name,
+                            name,
+                            0,
+                            target::implicit_fields(&field.ty).len(),
+                        );
+                        self.warn(
                             table_name,
                             Some(name),
                             if field.record_key {
@@ -162,12 +178,11 @@ impl MigrationPlan {
         }
         for name in previous.tables.keys() {
             if !current.tables.contains_key(name) {
-                plan.operations
+                self.operations
                     .push(Operation::RemoveTable { name: name.clone() });
-                plan.warn(name, None, WarningKind::TableRemoved, Consequence::DataLoss);
+                self.warn(name, None, WarningKind::TableRemoved, Consequence::DataLoss);
             }
         }
-        plan
     }
 
     fn tables(&mut self, previous: &MigrationModel, current: &MigrationModel) {
@@ -193,6 +208,55 @@ impl MigrationPlan {
                 }
                 Some(_) => {}
             }
+        }
+    }
+
+    fn element_changes(
+        &mut self,
+        table: &str,
+        name: &str,
+        old: &MigrationType,
+        new: &MigrationType,
+    ) {
+        let old_elements = target::implicit_fields(old);
+        let new_elements = target::implicit_fields(new);
+        for (index, ty) in new_elements.iter().enumerate() {
+            if old_elements.get(index) == Some(ty) {
+                continue;
+            }
+            let element_depth = index + 1;
+            if index >= old_elements.len() {
+                // DEFINE with the final collection type would itself synthesize
+                // descendants. Seed just this path with any, then ALTER it, so
+                // every derived definition has one explicit planned operation.
+                self.operations.push(Operation::DefineField {
+                    table: table.to_owned(),
+                    name: name.to_owned(),
+                    element_depth,
+                    ty: MigrationType::Scalar("any".into()),
+                    record_key: false,
+                });
+            }
+            self.operations.push(Operation::AlterField {
+                table: table.to_owned(),
+                name: name.to_owned(),
+                element_depth,
+                ty: ty.clone(),
+                record_key: false,
+            });
+        }
+        if old_elements.len() > new_elements.len() {
+            self.remove_elements(table, name, new_elements.len() + 1, old_elements.len());
+        }
+    }
+
+    fn remove_elements(&mut self, table: &str, name: &str, minimum: usize, maximum: usize) {
+        for element_depth in (minimum..=maximum).rev() {
+            self.operations.push(Operation::RemoveField {
+                table: table.to_owned(),
+                name: name.to_owned(),
+                element_depth,
+            });
         }
     }
 

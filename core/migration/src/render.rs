@@ -37,10 +37,18 @@ pub(crate) fn script(plan: &MigrationPlan) -> String {
                 .unwrap();
             }
             Operation::DefineField {
-                table, name, ty, ..
+                table,
+                name,
+                ty,
+                element_depth,
+                ..
             }
             | Operation::AlterField {
-                table, name, ty, ..
+                table,
+                name,
+                ty,
+                element_depth,
+                ..
             } => {
                 let altering = matches!(operation, Operation::AlterField { .. });
                 let verb = if altering { "ALTER" } else { "DEFINE" };
@@ -49,7 +57,7 @@ pub(crate) fn script(plan: &MigrationPlan) -> String {
                 write!(
                     output,
                     "{verb} FIELD {} ON TABLE {} TYPE {}",
-                    target::identifier(name),
+                    field_path(name, *element_depth),
                     target::identifier(table),
                     contract.ty
                 )
@@ -63,11 +71,15 @@ pub(crate) fn script(plan: &MigrationPlan) -> String {
                 }
                 output.push_str(";\n");
             }
-            Operation::RemoveField { table, name } => {
+            Operation::RemoveField {
+                table,
+                name,
+                element_depth,
+            } => {
                 writeln!(
                     output,
                     "REMOVE FIELD {} ON TABLE {};",
-                    target::identifier(name),
+                    field_path(name, *element_depth),
                     target::identifier(table)
                 )
                 .unwrap();
@@ -126,4 +138,12 @@ fn warning_header(plan: &MigrationPlan, output: &mut String) {
     if !plan.warnings().is_empty() {
         output.push('\n');
     }
+}
+
+fn field_path(name: &str, element_depth: usize) -> String {
+    format!(
+        "{}{}",
+        target::identifier(name),
+        "[*]".repeat(element_depth)
+    )
 }
