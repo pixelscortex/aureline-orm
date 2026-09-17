@@ -1,0 +1,27 @@
+core/migration/src/target.rs
+  s_8606aa8e9d00dc::t_1a0f6ba82b4b6b 51-108
+core/migration/src/plan.rs
+  s_8606aa8e9d00dc::t_acee26a55d23d6 1,46-47,54-55,62-63,107,128,132,148-152,159-165,181,183,214-261
+  s_8606aa8e9d00dc::t_5c0826ffe69223 262
+core/migration/docs/adr/0001-surrealdb-3-2-set-enforcement.md
+  s_8606aa8e9d00dc::t_f70ac9ff89357f 17-18
+core/migration/src/render.rs
+  s_8606aa8e9d00dc::t_acee26a55d23d6 40-44,47-51,60,74-78,82,142-148
+  s_8606aa8e9d00dc::t_e556c03e380a14 149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "df2577c9336e35062ad602eb517380813411c4fc",
+  "prompts": {},
+  "sessions": {
+    "s_8606aa8e9d00dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b088-d0a4-7b23-ba8e-3f93e3c4b151",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
