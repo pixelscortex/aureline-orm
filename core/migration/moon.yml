@@ -8,12 +8,16 @@ tags:
 
 dependsOn:
   - aureline-ast
+  - aureline-checker
+  - aureline-parser
 
 tasks:
   build:
     command: "cargo build -p aureline-migration"
     deps:
       - "aureline-ast:build"
+      - "aureline-checker:build"
+      - "aureline-parser:build"
     inputs: &rust_inputs
       - "src/**/*.rs"
       - "Cargo.toml"
@@ -23,11 +27,15 @@ tasks:
     command: "cargo check -p aureline-migration"
     deps:
       - "aureline-ast:check"
+      - "aureline-checker:check"
+      - "aureline-parser:check"
     inputs: *rust_inputs
   test:
     command: "cargo test -p aureline-migration"
     deps:
       - "aureline-ast:test"
+      - "aureline-checker:test"
+      - "aureline-parser:test"
     inputs: *rust_inputs
   format:
     command: "cargo fmt --package aureline-migration --check"

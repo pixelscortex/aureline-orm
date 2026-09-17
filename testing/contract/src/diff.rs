@@ -1,5 +1,14 @@
 use crate::sexpr::SExpr;
 
+pub(crate) fn artifact_mismatch(expected: &str, actual: &str) -> String {
+    let expected_lines: Vec<_> = expected.split('\n').map(str::to_owned).collect();
+    let actual_lines: Vec<_> = actual.split('\n').map(str::to_owned).collect();
+    format!(
+        "generated artifact mismatch\n\nexpected:\n{expected}\n\nactual:\n{actual}\n\ndiff:\n{}",
+        line_diff(&expected_lines, &actual_lines)
+    )
+}
+
 pub(crate) fn mismatch(expected: &SExpr, actual: &SExpr) -> String {
     let expected_lines = expected.pretty_lines();
     let actual_lines = actual.pretty_lines();

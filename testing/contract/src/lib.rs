@@ -43,6 +43,59 @@ impl AurlTest {
 
         matcher::assert_matches(expected, &actual);
     }
+
+    /// Parses, checks, and generates a first migration from empty history.
+    ///
+    /// # Panics
+    ///
+    /// Panics when parsing, static checking, or migration generation rejects the source.
+    #[must_use]
+    pub fn compiles(self) -> Compiled {
+        let ast = aureline_parser::parse(&self.source).unwrap_or_else(|errors| {
+            panic!(
+                "source did not parse:\n{}\n\nparser errors:\n{errors:#?}",
+                self.source
+            )
+        });
+        let checked = aureline_checker::check(&ast)
+            .into_checked()
+            .unwrap_or_else(|analysis| {
+                panic!(
+                    "source did not check:\n{}\n\nfindings:\n{:#?}",
+                    self.source,
+                    analysis.findings()
+                )
+            });
+        let generation = aureline_migration::generate(&checked, None).unwrap_or_else(|errors| {
+            panic!(
+                "source did not generate:\n{}\n\ngeneration errors:\n{errors:#?}",
+                self.source
+            )
+        });
+        Compiled {
+            ddl: generation.script,
+        }
+    }
+}
+
+/// Generated artifacts from one source compilation, available for exact assertions.
+pub struct Compiled {
+    ddl: String,
+}
+
+impl Compiled {
+    /// Compares the first migration script byte-for-byte with an inline expectation.
+    ///
+    /// # Panics
+    ///
+    /// Panics with a readable expected-versus-actual diff when the script differs.
+    pub fn ddl(self, expected: &str) {
+        assert!(
+            self.ddl == expected,
+            "{}",
+            diff::artifact_mismatch(expected, &self.ddl)
+        );
+    }
 }
 
 #[macro_export]

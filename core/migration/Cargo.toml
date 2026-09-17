@@ -1,6 +1,6 @@
 [package]
 name = "aureline-migration"
-description = "Aureline migration preview primitives."
+description = "Offline Aureline migration planning, snapshots, and SurrealQL generation."
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -11,6 +11,11 @@ path = "src/lib.rs"
 
 [dependencies]
 aureline-ast = { path = "../ast" }
+aureline-checker = { path = "../checker" }
+aureline-parser = { path = "../parser" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+nanoid = "0.4"
 
 [lints]
 workspace = true
