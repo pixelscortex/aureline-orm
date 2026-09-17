@@ -1,0 +1,21 @@
+t3.json
+  s_8606aa8e9d00dc::t_3644ba90072dea 1-17
+.codegraph/.gitignore
+  s_8606aa8e9d00dc::t_aee31650c2c502 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "99c67295dccff1d4170f52116148ca0cb94938ab",
+  "prompts": {},
+  "sessions": {
+    "s_8606aa8e9d00dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b088-d0a4-7b23-ba8e-3f93e3c4b151",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
