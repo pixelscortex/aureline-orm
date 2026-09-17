@@ -1,0 +1,19 @@
+core/checker/docs/adr/0001-sized-set-contract.md
+  s_fc4f77fa4748ce::t_3033a5e739734e 6-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a510399cd1438c2131072870ddd479ee79d6df7f",
+  "prompts": {},
+  "sessions": {
+    "s_fc4f77fa4748ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07b03-7345-74b2-91f0-15849e3043f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
