@@ -1,0 +1,39 @@
+core/wasm/src/lib.rs
+  s_8606aa8e9d00dc::t_d0af5c13fde4c6 1
+  s_8606aa8e9d00dc::t_737679db4524cb 10-13
+core/wasm/src/migration.rs
+  s_8606aa8e9d00dc::t_2aecb4d5ee8908 43-44,60,145,201
+  s_8606aa8e9d00dc::t_d0af5c13fde4c6 170-200,202-205
+  s_8606aa8e9d00dc::t_d2683ccca3a435 7-11,54-59,61-106,109-144,146-164,208-213,219-225
+  s_8606aa8e9d00dc::t_0f03838dfc031b 1-6,12-42,45-53,107-108,165-169,206-207,214-218,226-235
+core/wasm/Cargo.toml
+  s_8606aa8e9d00dc::t_d0af5c13fde4c6 6
+  s_8606aa8e9d00dc::t_737679db4524cb 16,23-24
+  s_8606aa8e9d00dc::t_d941d748b0d3ba 25
+core/wasm/moon.yml
+  s_8606aa8e9d00dc::t_d0af5c13fde4c6 29,40
+  s_8606aa8e9d00dc::t_737679db4524cb 10,18,51
+site/src/lib/components/MigrationPanel.svelte
+  s_8606aa8e9d00dc::t_2ead9f402bab0e 1-106
+site/src/routes/playground/+page.svelte
+  s_8606aa8e9d00dc::t_2ead9f402bab0e 4,63,66-70,114,152,219,228,280-281,295-296,317-318
+  s_8606aa8e9d00dc::t_abc5d2d8e46c5b 316,404
+Cargo.lock
+  s_8606aa8e9d00dc::t_c395afd26be273 86,89,190,193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ab4c04e1786fd3943df51bef4f95f8f9e86089c3",
+  "prompts": {},
+  "sessions": {
+    "s_8606aa8e9d00dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b088-d0a4-7b23-ba8e-3f93e3c4b151",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
