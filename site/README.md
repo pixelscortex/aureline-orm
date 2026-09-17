@@ -8,23 +8,23 @@ pnpm playground
 
 This builds the current Rust compiler wrapper with `wasm-pack` and starts SvelteKit. Open the printed local URL at `/playground`. Rust, the `wasm32-unknown-unknown` target, and `wasm-pack` are required; the build installs the target when Rustup is available.
 
-The editor parses after 300 ms of inactivity. Try the table, composite-type, and malformed-input examples, or enter an empty document. Successful output shows tables and fields in source order, exact field type spelling, and UTF-8 byte spans. Invalid syntax returns the parser's structured phase-local problems and no tables. Type names, record targets, and duplicates are not semantically checked yet.
+The editor checks after 300 ms of inactivity. Try the table, composite-type, and malformed-input examples, or enter an empty document. The Semantic view shows canonical field types and required/optional presence in source order. Syntax-invalid input is separated from semantic-invalid input; both retain ordered problems and UTF-8 byte spans. Lexer and AST views expose the corresponding syntax inspection data.
 
-The output is an experimental inspection view, not a complete serialized AST or the future versioned Diagnostic envelope. The source is parsed locally in WebAssembly.
+The output is an experimental inspection view, not a complete serialized AST or a versioned Diagnostic envelope. The source is parsed and checked locally in WebAssembly.
 
 To use the wrapper in another browser-mounted Svelte component:
 
 ```svelte
 <script lang="ts">
   import { onMount } from 'svelte';
-  import init, { parse } from '@aureline/wasm';
+  import init, { check } from '@aureline/wasm';
 
   let output = $state('Loading…');
 
   onMount(() => {
     init()
       .then(() => {
-        output = JSON.stringify(parse('table User schemafull { name string }'), null, 2);
+        output = JSON.stringify(check('table User schemafull { id string }'), null, 2);
       })
       .catch((error) => {
         output = String(error);

@@ -54,6 +54,10 @@ _Avoid_: Array type, nullability
 Whether a declared field may be absent from a record. It is permitted by SurrealDB `NONE`, including through `option<T>`, and is distinct from storing `NULL`.
 _Avoid_: Nullability, nullable field
 
+**Record Key Contract**:
+The validated Semantic Type of the key component explicitly declared by a Table's top-level `id` Field. It preserves structural constraints while admitting fewer outer type forms than an ordinary Field contract.
+_Avoid_: Parallel key algebra, record link, generator provenance
+
 **Nullability**:
 Whether a value may be SurrealDB's stored `NULL` value.
 _Avoid_: Field presence, `NONE`, optional parameter

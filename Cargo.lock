@@ -65,6 +65,7 @@ name = "aureline-test"
 version = "0.0.0"
 dependencies = [
  "aureline-ast",
+ "aureline-checker",
  "aureline-parser",
  "chumsky",
  "serde",
@@ -75,6 +76,7 @@ name = "aureline-wasm"
 version = "0.0.0"
 dependencies = [
  "aureline-ast",
+ "aureline-checker",
  "aureline-parser",
  "console_error_panic_hook",
  "serde",
