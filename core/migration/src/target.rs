@@ -138,18 +138,50 @@ fn render_type(ty: &MigrationType) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        MigrationType::Union(members) => {
-            let values: Vec<_> = members.iter().filter(|member| !is_none(member)).collect();
-            let joined = values
-                .iter()
-                .map(|member| render_type(member))
-                .collect::<Vec<_>>()
-                .join(" | ");
-            if values.len() < members.len() {
-                format!("option<{joined}>")
-            } else {
-                joined
+        MigrationType::Union(members) => render_union(members),
+    }
+}
+
+fn render_union(members: &[MigrationType]) -> String {
+    // Recursive wildcard derivation preserves the server's nested Either
+    // wrappers. SurrealQL cannot spell `any | int` or `option<int> |
+    // option<string>`: flatten only for rendering, retaining the structural
+    // types for descendant bookkeeping. An `any` descendant needs no further
+    // type restriction because its parent still validates the full contract.
+    let mut flattened = Vec::new();
+    flatten_union(members, &mut flattened);
+    if flattened
+        .iter()
+        .any(|member| matches!(member, MigrationType::Scalar(name) if name == "any"))
+    {
+        return "any".into();
+    }
+    let optional = flattened.iter().any(|member| is_none(member));
+    let mut values = Vec::new();
+    for member in flattened {
+        if !is_none(member) {
+            let rendered = render_type(member);
+            if !values.contains(&rendered) {
+                values.push(rendered);
             }
+        }
+    }
+    let joined = values.join(" | ");
+    if values.is_empty() {
+        "none".into()
+    } else if optional {
+        format!("option<{joined}>")
+    } else {
+        joined
+    }
+}
+
+fn flatten_union<'a>(members: &'a [MigrationType], flattened: &mut Vec<&'a MigrationType>) {
+    for member in members {
+        if let MigrationType::Union(inner) = member {
+            flatten_union(inner, flattened);
+        } else {
+            flattened.push(member);
         }
     }
 }
