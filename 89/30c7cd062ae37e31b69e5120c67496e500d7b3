@@ -1,0 +1,29 @@
+core/parser/src/lib.rs
+  s_723f8d1ba7f7ac::t_28f47a34ecd354 101
+  s_723f8d1ba7f7ac::t_5936f0e6c48b6a 83-100,102-120
+site/src/routes/playground/+page.svelte
+  s_723f8d1ba7f7ac::t_28f47a34ecd354 319-332,334-355,357-378,381,384-406
+  s_723f8d1ba7f7ac::t_5fe9bc3f294012 4,114-121,318
+Cargo.lock
+  s_723f8d1ba7f7ac::t_bc4753fa93192e 84,187-192,329-341,449-454
+core/wasm/Cargo.toml
+  s_723f8d1ba7f7ac::t_38417b26df725c 22-24
+core/wasm/src/lib.rs
+  s_723f8d1ba7f7ac::t_24d61659dace48 10-13,204-207,273-277,509-513,528-573,579-604
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8930c7cd062ae37e31b69e5120c67496e500d7b3",
+  "prompts": {},
+  "sessions": {
+    "s_723f8d1ba7f7ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b077-aa9a-7241-bd9e-97188079b7a7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
