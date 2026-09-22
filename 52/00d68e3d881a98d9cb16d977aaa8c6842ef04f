@@ -1,0 +1,100 @@
+core/migration/src/target.rs
+  s_8606aa8e9d00dc::t_3afd56f4afbcff 11,13,47-49,195-198
+testing/contract/tests/scalar_edges.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+core/cli/src/main.rs
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 1-6
+testing/contract/tests/reporting.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+testing/contract/tests/tuples.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+core/checker/src/resolver.rs
+  s_8606aa8e9d00dc::t_0ac586d9f191be 37-54
+testing/contract/src/diff.rs
+  s_8606aa8e9d00dc::t_dd42ad07b133c6 1-2,4-6,9,19,33-35
+  s_8606aa8e9d00dc::t_3124c74c701983 3
+core/migration/src/render.rs
+  s_8606aa8e9d00dc::t_af3092f922235e 1
+  s_8606aa8e9d00dc::t_3afd56f4afbcff 2-7,13-14,112-113
+testing/contract/tests/index.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+core/migration/src/model.rs
+  s_8606aa8e9d00dc::t_3afd56f4afbcff 1-5,7-8,16-20,28,30,37,39,45,47,58,62,67,72,74,81-83,85,137,152,226-230
+  s_8606aa8e9d00dc::t_af3092f922235e 6,84
+  s_8606aa8e9d00dc::t_883b37e3c95609 143,158
+core/checker/src/records.rs
+  s_8606aa8e9d00dc::t_e8d0c3cb194f89 86-92
+sdks/js/src/index.ts
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 1-2
+site/src/routes/playground/+page.svelte
+  s_8606aa8e9d00dc::t_c1a3aa153661b4 117-121,148-149,159,324
+core/migration/src/plan.rs
+  s_8606aa8e9d00dc::t_3afd56f4afbcff 1-8,14,16-17,23,25,27,29,31,33,40,42,44,46,56,58,60,63,65,67,70-71,73,75,79,81,84,86,88,92,94,97,99,101,118-119,138-140
+  s_8606aa8e9d00dc::t_15d97bbf8e848e 106,125,131
+  s_8606aa8e9d00dc::t_556e4314483bcb 107
+testing/contract/tests/collections.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+core/checker/src/index.rs
+  s_8606aa8e9d00dc::t_9370485f69d626 110-113,127-130,147-150,169-171,178-180
+core/ast/src/source.rs
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 1-8
+testing/contract/tests/records.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+testing/contract/src/matcher.rs
+  s_8606aa8e9d00dc::t_dd42ad07b133c6 1-6,9-12
+site/src/lib/components/MigrationPanel.svelte
+  s_8606aa8e9d00dc::t_c1a3aa153661b4 14-15,20-23,66,85,102
+testing/contract/src/lib.rs
+  s_8606aa8e9d00dc::t_dd42ad07b133c6 1-8,15-18,61-63
+  s_8606aa8e9d00dc::t_580e85026534d0 64
+testing/contract/src/normalizer.rs
+  s_8606aa8e9d00dc::t_dd42ad07b133c6 4-7,15-20,45,90-92
+core/checker/src/finding.rs
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 1-7
+core/checker/src/analysis.rs
+  s_8606aa8e9d00dc::t_9370485f69d626 71-73,79-83,89-90,96-99,105-108,114-117,123-126,132-136,214-216,230,236-238,244-247,256-258,264-266,272-275
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 2-7
+testing/contract/tests/id_contract.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+core/migration/README.md
+  s_8606aa8e9d00dc::t_3afd56f4afbcff 7-8
+core/migration/src/snapshot.rs
+  s_8606aa8e9d00dc::t_3afd56f4afbcff 27,72-75
+testing/contract/tests/migration.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-7
+core/ast/src/tokens.rs
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 1-6
+core/migration/src/lib.rs
+  s_8606aa8e9d00dc::t_3afd56f4afbcff 22,24,26,32,34,36,52-53
+testing/contract/tests/unions.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+core/checker/src/semantic_type.rs
+  s_8606aa8e9d00dc::t_9370485f69d626 44-48,113-115
+  s_8606aa8e9d00dc::t_5709a90b2aa87a 112
+site/src/lib/utils.ts
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 4
+testing/contract/src/sexpr.rs
+  s_8606aa8e9d00dc::t_dd42ad07b133c6 1-6,12,19,30,45,79-80
+core/checker/src/unions.rs
+  s_8606aa8e9d00dc::t_bb85988f11da4d 23-27,41-44,92-96
+testing/contract/tests/parser.rs
+  s_8606aa8e9d00dc::t_f576a1fc94d225 1-6
+core/ast/src/ids.rs
+  s_8606aa8e9d00dc::t_0cb5c8c765d02f 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5200d68e3d881a98d9cb16d977aaa8c6842ef04f",
+  "prompts": {},
+  "sessions": {
+    "s_8606aa8e9d00dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b088-d0a4-7b23-ba8e-3f93e3c4b151",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "JustKira <shighgamerhg@gmail.com>"
+    }
+  }
+}
