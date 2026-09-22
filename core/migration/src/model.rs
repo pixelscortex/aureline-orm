@@ -1,3 +1,11 @@
+//! The migration model is the stable seam between semantic checking and DDL.
+//!
+//! A checked program still refers to source arenas and checker-owned IDs. This
+//! module replaces those references with sorted database names and preserves
+//! only the contracts needed to compare schemas, validate snapshots, and render
+//! `SurrealQL`. Keeping this representation target-neutral lets the planner and
+//! renderer share one deterministic view of the schema.
+
 use std::collections::BTreeMap;
 
 use aureline_ast::ast::SchemaType;
@@ -5,6 +13,11 @@ use aureline_checker::{CheckedProgram, RecordTargets, SemanticType};
 use serde::{Deserialize, Serialize};
 
 /// Complete migration-relevant facts, independent of source arenas and target DDL.
+///
+/// `MigrationModel::lower` is the one-way boundary from checker output into
+/// migration generation: record targets become table names, and `BTreeMap`
+/// ordering makes comparison and snapshot serialization independent of source
+/// declaration order.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MigrationModel {
     pub(crate) tables: BTreeMap<String, Table>,
@@ -12,20 +25,26 @@ pub struct MigrationModel {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Table {
+    /// Whether the target table accepts only declared fields.
     pub(crate) schema_mode: SchemaMode,
+    /// Fields keyed by their exact database names.
     pub(crate) fields: BTreeMap<String, Field>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SchemaMode {
+    /// Every stored field must be declared by the table schema.
     Schemafull,
+    /// Undeclared fields remain allowed by the table schema.
     Schemaless,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Field {
+    /// The checked value contract, including nested collections and unions.
     pub(crate) ty: MigrationType,
+    /// Whether this field is the table's declared record identity field.
     pub(crate) record_key: bool,
 }
 
@@ -36,23 +55,33 @@ pub struct Field {
 /// can enforce those contracts before emitting DDL.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MigrationType {
+    /// A target scalar kind such as `string`, `int`, or `any`.
     Scalar(String),
     /// An empty target list denotes an unrestricted record identity.
     Record(Vec<String>),
+    /// An ordered collection whose length must equal `exact_length` when set.
     Array {
         element: Box<Self>,
         exact_length: Option<u64>,
     },
+    /// A deduplicating collection with an optional maximum distinct count.
     Set {
         element: Box<Self>,
         max_distinct: Option<u64>,
     },
+    /// A value accepted by at least one of the member contracts.
     Union(Vec<Self>),
+    /// A fixed-position collection; members do not create wildcard fields.
     Tuple(Vec<Self>),
 }
 
 impl MigrationModel {
     /// Lowers proven schema facts without revisiting source type syntax.
+    ///
+    /// The checker has already resolved names, record targets, collection
+    /// bounds, and record-key roles. This pass only translates that result into
+    /// owned, target-neutral data; it intentionally does not reparse source or
+    /// decide whether `SurrealDB` can enforce a contract.
     ///
     /// # Panics
     /// Panics only if the checker's private arena invariants are violated.
@@ -105,11 +134,13 @@ impl MigrationModel {
 }
 
 impl Table {
+    /// Returns this table's schema strictness for target rendering.
     #[must_use]
     pub fn schema_mode(&self) -> SchemaMode {
         self.schema_mode
     }
 
+    /// Iterates fields in exact-name order, independent of declaration order.
     pub fn fields(&self) -> impl Iterator<Item = (&str, &Field)> {
         self.fields
             .iter()
@@ -118,11 +149,13 @@ impl Table {
 }
 
 impl Field {
+    /// Returns the normalized contract used by planning and rendering.
     #[must_use]
     pub fn ty(&self) -> &MigrationType {
         &self.ty
     }
 
+    /// Reports whether this field supplies the table's record identity.
     #[must_use]
     pub fn is_record_key(&self) -> bool {
         self.record_key
@@ -190,8 +223,11 @@ impl MigrationType {
         }
     }
 
-    /// Canonical snapshot spelling; sized sets here describe the contract,
-    /// not a claim that native target syntax enforces its upper bound.
+    /// Returns the canonical spelling used in snapshots and equality checks.
+    ///
+    /// This is a model spelling, not necessarily valid target DDL: in
+    /// particular, a sized set retains its maximum distinct-count contract
+    /// here even though the target renderer emits an assertion for that bound.
     #[must_use]
     pub fn canonical(&self) -> String {
         match self {

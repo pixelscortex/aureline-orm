@@ -1,3 +1,9 @@
+//! Parser contracts from lexical filtering through source-owned AST structure.
+//!
+//! The fixtures exercise the public parser representation rather than private
+//! combinator details: comments and trivia disappear, source spelling and
+//! nesting survive, and malformed forms retain precise recovery diagnostics.
+
 use aureline_ast::{
     ast::{CommentKind, SourceType, TypeArgument},
     source::{SourceId, SourceSpan, TextRange, TextSize},

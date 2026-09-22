@@ -1,28 +1,49 @@
+//! Schema diffing for the migration model.
+//!
+//! The planner turns two normalized models into reviewable semantic operations
+//! and warnings. It decides what changed and in which dependency-safe order;
+//! [`crate::render`] owns the target syntax. This separation keeps target text
+//! out of comparison logic and makes unsafe consequences visible before a
+//! caller writes a migration file.
+
 use crate::{MigrationModel, MigrationType, SchemaMode, target};
 
 /// A consequence of the expected schema transition, without inspecting stored data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Consequence {
+    /// The operation removes persisted records.
     DataLoss,
+    /// Existing records may remain, but future validation or identity checks
+    /// can reject data that was valid under the previous schema.
     DataInvalidation,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WarningKind {
+    /// A table and all of its records will be removed.
     TableRemoved,
+    /// A field definition is removed while its stored values remain.
     FieldRemoved,
+    /// A field's accepted value contract changes.
     FieldTypeChanged,
+    /// A field's role as the table record key changes.
     RecordKeyChanged,
+    /// A table changes from schemaless to schemafull mode.
     SchemaMadeFull,
+    /// A new field does not admit `none` and may reject existing records.
     RequiredFieldAdded,
 }
 
 /// Structured warning repeated in the script's review header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Warning {
+    /// What a caller should expect if the generated operation is applied.
     pub consequence: Consequence,
+    /// The schema transition that caused this warning.
     pub kind: WarningKind,
+    /// The affected table's exact database name.
     pub table: String,
+    /// The affected field, or `None` for a table-wide transition.
     pub field: Option<String>,
 }
 
@@ -32,39 +53,58 @@ pub struct Warning {
 /// target. There is no speculative overwrite/recreation fallback.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Operation {
+    /// Creates a table before any fields are defined on it.
     DefineTable {
+        /// The table's exact database name.
         name: String,
+        /// The table mode after the operation.
         schema_mode: SchemaMode,
     },
+    /// Changes an existing table's schema strictness.
     AlterTable {
+        /// The table's exact database name.
         name: String,
+        /// The table mode after the operation.
         schema_mode: SchemaMode,
     },
+    /// Defines a field or one of the wildcard descendants synthesized by a
+    /// collection-valued parent.
     DefineField {
+        /// The owning table's exact database name.
         table: String,
+        /// The declared field name, before wildcard suffixes.
         name: String,
         /// Zero is the declared field; each additional level appends `[*]`.
         element_depth: usize,
+        /// The value contract to render for this path.
         ty: MigrationType,
+        /// Whether the declared path is the table's record key.
         record_key: bool,
     },
+    /// Changes a field or an already-defined wildcard descendant.
     AlterField {
+        /// The owning table's exact database name.
         table: String,
+        /// The declared field name, before wildcard suffixes.
         name: String,
         /// Zero is the declared field; each additional level appends `[*]`.
         element_depth: usize,
+        /// The value contract to render for this path.
         ty: MigrationType,
+        /// Whether the declared path is the table's record key.
         record_key: bool,
     },
+    /// Removes a field or wildcard descendant from a surviving table.
     RemoveField {
+        /// The owning table's exact database name.
         table: String,
+        /// The declared field name, before wildcard suffixes.
         name: String,
         /// Zero is the declared field; each additional level appends `[*]`.
         element_depth: usize,
     },
-    RemoveTable {
-        name: String,
-    },
+    /// Removes a table and therefore all of its fields and records.
+    RemoveTable { name: String },
 }
 
 /// Dependency-safe phases, with case-sensitive identity order inside each phase.
@@ -75,22 +115,29 @@ pub struct MigrationPlan {
 }
 
 impl MigrationPlan {
+    /// Returns operations in execution order: tables, fields, descendants,
+    /// then removals.
     #[must_use]
     pub fn operations(&self) -> &[Operation] {
         &self.operations
     }
 
+    /// Returns warnings in the same identity order used by the diff.
     #[must_use]
     pub fn warnings(&self) -> &[Warning] {
         &self.warnings
     }
 
+    /// Reports whether applying this plan would change the schema.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.operations.is_empty()
     }
 
     pub(crate) fn compare(previous: &MigrationModel, current: &MigrationModel) -> Self {
+        // Tables and fields are BTreeMaps, so each phase is deterministic. The
+        // explicit phases also preserve target dependencies: a parent exists
+        // before its fields, and descendants are removed before their parent.
         let mut plan = Self {
             operations: Vec::new(),
             warnings: Vec::new(),

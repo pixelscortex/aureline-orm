@@ -34,6 +34,24 @@ const UNSUPPORTED_TYPES: &[&str] = &[
     "table",
 ];
 
+/// Resolves one parsed [`SourceType`] into the checker’s target-neutral
+/// [`SemanticType`] contract.
+///
+/// This is the recursive dispatch point for field types: scalar and shorthand
+/// names are interpreted here, while applications, unions, and tuples delegate
+/// their nested source types back through the same operation. The
+/// [`ResolutionIndex`] supplies declaration identities for record targets;
+/// [`Findings`] receives source-located problems in traversal order. The
+/// resolver is called once for each field by analysis, so callers can consume
+/// the returned outcome without re-walking the source syntax.
+///
+/// `Resolved` is a valid semantic contract, `Unknown` preserves a recoverable
+/// unresolved outcome when no useful contract can be established yet, and
+/// `Invalid` carries proof of a finding already appended to `findings`. That
+/// proof lets enclosing types propagate the root problem without manufacturing
+/// a cascade. For example, `array<record<User>>` resolves its element through
+/// this entry point; if `User` is missing, the result is `Invalid` and the
+/// missing-target finding points at `User` in the source.
 pub(crate) fn resolve(
     source_type: &SourceType,
     index: &ResolutionIndex<'_>,

@@ -1,3 +1,10 @@
+//! Typed identities for arena-backed AST entries.
+//!
+//! The wrappers prevent a table identity from being passed to a field arena
+//! (and vice versa) while retaining the dense numeric representation used by
+//! [`crate::arena::Arena`]. IDs are compilation-local; source names and spans
+//! remain the stable information exposed to consumers.
+
 use crate::arena::ArenaId;
 
 macro_rules! define_arena_id {

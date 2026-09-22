@@ -19,15 +19,21 @@ pub use target::TargetError;
 /// A field contract that cannot be faithfully enforced on the pinned target.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenerationError {
+    /// Table containing the unsupported field.
     pub table: String,
+    /// Field whose contract cannot be preserved on the pinned target.
     pub field: String,
+    /// The target-specific proof that failed.
     pub reason: TargetError,
 }
 
 #[derive(Clone, Debug)]
 pub struct Generation {
+    /// Classified schema transition for callers to inspect before writing.
     pub plan: MigrationPlan,
+    /// Executable target script, including review warnings as comments.
     pub script: String,
+    /// The model identity to persist alongside the script.
     pub snapshot: Snapshot,
 }
 
@@ -43,6 +49,8 @@ pub fn generate(
     checked: &aureline_checker::CheckedProgram<'_>,
     previous: Option<&Snapshot>,
 ) -> Result<Generation, Vec<GenerationError>> {
+    // Validate every field before comparing or rendering so a caller never
+    // receives a partial migration whose target text weakens a schema contract.
     let current = MigrationModel::lower(checked);
     let mut errors = Vec::new();
     for (table_name, table) in &current.tables {

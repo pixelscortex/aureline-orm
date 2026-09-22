@@ -1,3 +1,9 @@
+//! Checker contracts for the restricted, borrowed identity-key model.
+//!
+//! An `id` field may use only the outer shapes accepted by the semantic
+//! checker. These tests also ensure nested resolutions retain their exact
+//! structure and that invalid keys do not create cascading findings.
+
 use aureline_ast::{ast::Ast, ids::FieldId, source::SourceId};
 use aureline_checker::{
     FieldPresence, Finding, RecordTargets, SemanticType, TypeResolution, check,

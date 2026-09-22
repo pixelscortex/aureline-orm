@@ -4,6 +4,8 @@
 
 The target is pinned to SurrealDB 3.2.0. See [sized-set enforcement](docs/adr/0001-surrealdb-3-2-set-enforcement.md) for supported recursive constraints and generation-blocking unions. The library performs no network or database operations.
 
+The generation pipeline has three reviewable seams: `MigrationModel::lower` translates checked semantic facts into stable names, `MigrationPlan` compares the previous and current models in dependency-safe phases, and the renderer turns those operations into target DDL. `Snapshot::from_json` is the trust boundary for persisted history; it reparses and rechecks flat entities before they can become the comparison base. This means a snapshot can be inspected or rejected without allowing untrusted text to flow directly into generated SQL.
+
 Callers inspect `plan.is_empty()` and write nothing for an unchanged schema. For a nonempty plan, the CLI slice (#53) owns the indivisible creation of:
 
 ```text

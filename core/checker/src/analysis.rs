@@ -1,4 +1,10 @@
 //! Eager semantic analysis and the generation-safe Checked Program.
+//!
+//! Analysis runs the declaration/index pass, resolves each field type once,
+//! validates explicit record keys, and retains rejected findings alongside the
+//! recovery proofs that explain dependent failures. Only `into_checked` crosses
+//! the generation gate; downstream consumers receive resolved facts rather than
+//! re-walking source syntax.
 
 use aureline_ast::{
     arena::ArenaId,
@@ -62,41 +68,72 @@ pub(crate) fn run(ast: &Ast) -> Analysis<'_> {
 }
 
 impl<'ast> Analysis<'ast> {
+    /// Returns all typed Findings emitted while checking, in deterministic
+    /// source and phase order. A rejected analysis keeps both the root
+    /// problems and any later independent problems visible to diagnostics.
     #[must_use]
     pub fn findings(&self) -> &[Finding] {
         self.findings.as_slice()
     }
 
+    /// Returns whether a generation-blocking Finding was reported.
+    ///
+    /// `false` does not by itself make [`Self::into_checked`] succeed: an
+    /// unresolved field outcome can still prevent construction of a checked
+    /// program.
     #[must_use]
     pub fn has_errors(&self) -> bool {
         !self.findings.generation_allowed()
     }
 
+    /// Returns every table ID in source declaration order, including duplicate
+    /// declarations retained for diagnostics.
     #[must_use]
     pub fn tables(&self) -> &[TableId] {
         self.index.tables()
     }
 
+    /// Returns the source declaration for a table ID from this analysis.
+    ///
+    /// Returns `None` when the ID is not present in the borrowed AST. IDs are
+    /// arena-local and must not be reused across analyses.
     #[must_use]
     pub fn table(&self, id: TableId) -> Option<&'ast aureline_ast::ast::TableDecl> {
         self.index.table(id)
     }
 
+    /// Returns field IDs for a table in source order.
+    ///
+    /// An unknown table ID produces an empty slice; a valid table's duplicate
+    /// field declarations remain present so callers can explain every Finding.
     #[must_use]
     pub fn fields_of(&self, table: TableId) -> &[FieldId] {
         self.index.fields_of(table)
     }
 
+    /// Returns the source declaration for a field ID from this analysis.
+    ///
+    /// Returns `None` for an ID outside the borrowed AST. The returned field is
+    /// the original source declaration, not a checked or deduplicated copy.
     #[must_use]
     pub fn field(&self, id: FieldId) -> Option<&'ast aureline_ast::ast::FieldDecl> {
         self.index.field(id)
     }
 
+    /// Resolves an exact, case-sensitive table name while retaining ambiguity.
+    ///
+    /// [`TableResolution::Missing`] means no declaration matched; an
+    /// ambiguous result contains every matching table ID in source order.
     #[must_use]
     pub fn resolve_table(&self, name: &str) -> TableResolution {
         self.index.resolve_table(name)
     }
 
+    /// Returns the field's semantic resolution outcome, if its ID is indexed.
+    ///
+    /// `Resolved` is a usable contract; `Unknown` is recoverable uncertainty;
+    /// `Invalid` proves that a root Finding was already reported. `None`
+    /// means the field ID does not belong to this analysis.
     #[must_use]
     pub fn type_of_field(&self, id: FieldId) -> Option<&TypeResolution<SemanticType>> {
         self.field_types.get(id.into_index())
@@ -174,6 +211,9 @@ impl<'ast> CheckedProgram<'ast> {
 
     /// Returns the validated contract for a table's explicit `id` field.
     ///
+    /// Returns `None` when the table has no single valid top-level `id` field,
+    /// including missing, duplicate, or invalid declarations.
+    ///
     /// # Panics
     ///
     /// Panics if private validation data refers to a field without a resolved
@@ -187,16 +227,24 @@ impl<'ast> CheckedProgram<'ast> {
         Some(id_contract::from_validated(field_id, semantic))
     }
 
+    /// Returns every checked table ID in source declaration order.
     #[must_use]
     pub fn tables(&self) -> &[TableId] {
         self.index.tables()
     }
 
+    /// Returns the source declaration for a checked table ID.
+    ///
+    /// Returns `None` for an ID outside this checked program's AST.
     #[must_use]
     pub fn table(&self, id: TableId) -> Option<&'ast aureline_ast::ast::TableDecl> {
         self.index.table(id)
     }
 
+    /// Resolves a table name only when it identifies one checked table.
+    ///
+    /// Matching is exact and case-sensitive. Missing and ambiguous names both
+    /// return `None`, because neither identifies a safe table identity.
     #[must_use]
     pub fn table_named(&self, name: &str) -> Option<TableId> {
         match self.index.resolve_table(name) {
@@ -205,16 +253,26 @@ impl<'ast> CheckedProgram<'ast> {
         }
     }
 
+    /// Returns field IDs for a checked table in source declaration order.
+    ///
+    /// An unknown table ID produces an empty slice.
     #[must_use]
     pub fn fields_of(&self, table: TableId) -> &[FieldId] {
         self.index.fields_of(table)
     }
 
+    /// Returns the original source declaration for a checked field ID.
+    ///
+    /// Returns `None` when the ID is outside this checked program's AST.
     #[must_use]
     pub fn field(&self, id: FieldId) -> Option<&'ast aureline_ast::ast::FieldDecl> {
         self.index.field(id)
     }
 
+    /// Returns the resolved, target-neutral semantic contract for a field.
+    ///
+    /// Every returned type is generation-safe; `None` means the field ID is
+    /// not present in this checked program.
     #[must_use]
     pub fn type_of_field(&self, id: FieldId) -> Option<&SemanticType> {
         self.field_types.get(id.into_index())

@@ -20,6 +20,11 @@ use crate::{
 };
 
 /// Resolves a source union with one recursive resolver shared by all type forms.
+///
+/// Every member is visited in source order, including after an earlier member
+/// reports a problem. A resolved union is normalized only after that walk;
+/// `Unknown` is propagated as recoverable uncertainty and `Invalid` preserves
+/// the first reported proof without emitting a cascade for the union itself.
 pub(crate) fn resolve(
     union: &TypeUnion,
     index: &ResolutionIndex<'_>,
@@ -33,6 +38,10 @@ pub(crate) fn resolve(
 }
 
 /// Resolves `option<T>` as the normalized union `T | none`.
+///
+/// Exactly one type argument is required. A wrong arity or integer argument is
+/// reported at the constructor or argument span; a nested invalid member keeps
+/// its existing proof, and a recoverably unknown member remains `Unknown`.
 pub(crate) fn resolve_option(
     application: &TypeApplication,
     index: &ResolutionIndex<'_>,
@@ -80,6 +89,11 @@ pub(crate) fn resolve_option(
 }
 
 /// Produces canonical union semantics without changing source syntax.
+///
+/// Nested unions are flattened, duplicate members are removed, and record
+/// target constraints are merged. `any` absorbs all alternatives, while the
+/// remaining members retain structural ordering for stable equality and
+/// rendering.
 pub(crate) fn normalize(members: Vec<SemanticType>) -> SemanticType {
     let mut flattened = Vec::new();
     for member in members {

@@ -1,6 +1,10 @@
 //! Adapts a compiler-stage contract view into a logical S-expression through
 //! generic Serde traversal. Logical constructor names live with each stage's
 //! serialization adapter rather than being duplicated in this test crate.
+//!
+//! Serde exposes implementation-shaped records, options, and sequences. The
+//! intermediate [`Value`] tree lets this harness erase those transport details
+//! consistently before rendering one logical root for comparison.
 
 use std::fmt;
 
@@ -8,6 +12,12 @@ use serde::{Serialize, ser};
 
 use crate::sexpr::SExpr;
 
+/// Converts any contract-serializable stage value into one logical tree.
+///
+/// Empty option/unit values disappear and sequences flatten where the stage's
+/// serialization contract says they are transparent; records and variants keep
+/// their constructor names. A malformed serializer shape is rejected instead
+/// of silently producing a partial expectation.
 pub(crate) fn normalize(value: &impl Serialize) -> Result<SExpr, String> {
     let value = value
         .serialize(ValueSerializer)
@@ -32,6 +42,7 @@ enum Value {
     },
 }
 
+/// Ensures a serializer produced exactly one root expression for the contract.
 fn render_root(value: &Value) -> Result<SExpr, String> {
     match fragments(value).as_slice() {
         [expression] => Ok(expression.clone()),
@@ -76,6 +87,9 @@ fn fragments(value: &Value) -> Vec<SExpr> {
 }
 
 fn variant_field_fragments(value: &Value) -> Vec<SExpr> {
+    // Struct variants contribute their fields directly: the variant name is
+    // already the enclosing constructor, so adding the serialized record name
+    // would make logical output depend on Serde's transport shape.
     match value {
         Value::Record { fields, .. } => fields
             .iter()

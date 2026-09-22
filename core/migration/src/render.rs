@@ -1,8 +1,17 @@
+//! Rendering of a validated [`MigrationPlan`] into reviewable `SurrealQL`.
+//!
+//! Rendering is deliberately last in the pipeline. [`crate::generate`] has
+//! already checked every field contract, so this module can treat a failed
+//! target contract as an invariant violation while concentrating on target
+//! quoting, assertions, and operation grouping.
+
 use std::fmt::Write;
 
 use crate::{Consequence, MigrationPlan, Operation, SchemaMode, WarningKind, target};
 
 pub(crate) fn script(plan: &MigrationPlan) -> String {
+    // Keep the script's phase boundaries visible to reviewers. The plan is
+    // already ordered; this pass only inserts spacing and target syntax.
     let mut output = String::new();
     warning_header(plan, &mut output);
     let mut previous_phase = None;
@@ -100,6 +109,8 @@ fn mode(mode: SchemaMode) -> &'static str {
 }
 
 fn warning_header(plan: &MigrationPlan, output: &mut String) {
+    // Warnings are comments so the script remains executable while carrying
+    // the plan's data-loss and data-invalidation review record with it.
     for warning in plan.warnings() {
         let consequence = match warning.consequence {
             Consequence::DataLoss => "DATA LOSS",

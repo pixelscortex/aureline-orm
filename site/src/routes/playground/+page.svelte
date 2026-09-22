@@ -114,6 +114,11 @@ table Event schemaless {
 	let activeTab = $state<Tab>("migration");
 	const debouncedSource = new Debounced(() => source, 300);
 
+	/**
+	 * Runs the read-only compiler inspection shown in the Lexer, AST, and Semantic tabs.
+	 * Migration history is intentionally excluded: it advances only when the user presses
+	 * Generate in MigrationPanel, so editing the source cannot silently create a migration.
+	 */
 	function runInspection(value: string) {
 		try {
 			runtimeError = null;
@@ -140,6 +145,8 @@ table Event schemaless {
 	});
 
 	$effect(() => {
+		// Debouncing keeps the WASM inspection responsive while the user is typing; the
+		// explicit Generate action remains the only way to record migration history.
 		const value = debouncedSource.current;
 		if (wasmReady) runInspection(value);
 	});
@@ -149,6 +156,7 @@ table Event schemaless {
 	}
 
 	function handleTabKeydown(event: KeyboardEvent) {
+		// Keep one tab in the roving tab order and move focus with the standard tab-list keys.
 		const tabs: Tab[] = ["lexer", "ast", "semantic", "migration"];
 		const current = tabs.indexOf(activeTab);
 		let next = current;
@@ -313,6 +321,7 @@ table Event schemaless {
 			</div>
 
 			<div class="min-h-0 flex-1 overflow-auto p-4 sm:p-5">
+				<!-- Keep this panel mounted while tabs change so its in-memory migration history survives inspection. -->
 					<div id="panel-migration" class="scroll-mt-24" role="tabpanel" aria-labelledby="tab-migration" hidden={activeTab !== "migration"}>
 						<MigrationPanel {source} ready={wasmReady} />
 					</div>

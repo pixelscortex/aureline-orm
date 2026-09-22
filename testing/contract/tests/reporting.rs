@@ -1,3 +1,9 @@
+//! Findings contracts for dependency proofs and generation eligibility.
+//!
+//! A root finding invalidates its dependent type resolution, while independent
+//! findings remain visible in FIFO order. Warnings are retained separately and
+//! must not close the gate for generation.
+
 use aureline_checker::{Findings, TypeResolution};
 
 #[derive(Debug, PartialEq, Eq)]

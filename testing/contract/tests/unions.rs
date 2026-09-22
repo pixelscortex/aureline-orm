@@ -1,3 +1,9 @@
+//! Checker contracts for union normalization and field presence.
+//!
+//! Semantic unions flatten nested members, remove duplicates, and canonicalize
+//! order while preserving source syntax and spans. These fixtures also pin the
+//! difference between outer optionality and nested `none`/`null` values.
+
 use aureline_ast::{ast::SourceType, ids::FieldId, source::SourceId};
 use aureline_checker::{
     ArgumentRole, FieldPresence, Finding, RecordTargets, SemanticType, TypeResolution, check,

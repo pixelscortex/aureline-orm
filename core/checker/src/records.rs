@@ -83,6 +83,13 @@ pub(crate) fn resolve(
     }
 }
 
+/// Resolves the source target expression of a `record` application.
+///
+/// A name must resolve to one declared table; a union resolves each member,
+/// then sorts and deduplicates the resulting compilation-local IDs. Missing or
+/// ambiguous names report their own Finding, while nested applications and
+/// tuples are invalid argument roles. The returned IDs are identities only;
+/// this helper never recursively checks the target tables' fields.
 fn resolve_target(
     source_type: &SourceType,
     constructor_name: &str,

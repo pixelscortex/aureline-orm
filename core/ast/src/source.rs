@@ -1,3 +1,11 @@
+//! Source identities, UTF-8 byte ranges, and the registry used by diagnostics.
+//!
+//! Locations are half-open byte ranges rather than character indices so parser,
+//! checker, terminal, and browser consumers can share one provenance contract.
+//! Payload parsers rebase nested ranges with checked arithmetic; the registry
+//! owns source text separately from the AST so locations never require copying
+//! source into every node.
+
 use serde::Serialize;
 
 /// Identity of one source document in a [`SourceRegistry`].

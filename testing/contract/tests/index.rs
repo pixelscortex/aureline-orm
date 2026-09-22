@@ -1,3 +1,9 @@
+//! Resolution-index contracts for missing, unique, and ambiguous names.
+//!
+//! The index is the checker's immutable view of declarations. These tests pin
+//! candidate ordering and the distinction between an unresolved name and one
+//! with several valid declarations before resolver behavior consumes it.
+
 use aureline_ast::{ast::Ast, source::SourceId};
 use aureline_checker::{FieldResolution, Finding, ResolutionIndex, TableResolution, check};
 

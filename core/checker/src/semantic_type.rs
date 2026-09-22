@@ -41,6 +41,11 @@ pub enum SemanticType {
 }
 
 impl SemanticType {
+    /// Resolves one case-insensitive scalar spelling into the semantic algebra.
+    ///
+    /// Returns `None` for names that are constructors, table references, or
+    /// outside the supported scalar catalog. The returned type contains no
+    /// source spelling, so equivalent casing has the same contract.
     pub(crate) fn scalar(name: &str) -> Option<Self> {
         let canonical = name.to_ascii_lowercase();
         Some(match canonical.as_str() {
@@ -104,6 +109,10 @@ pub enum FieldPresence {
 }
 
 impl SemanticType {
+    /// Reports whether the outer contract permits `SurrealDB`'s `NONE` value.
+    ///
+    /// This is an outer-shape query: `array<option<T>>` does not make the array
+    /// field optional, while `option<T>` and unions containing `none` do.
     pub(crate) fn admits_none(&self) -> bool {
         match self {
             Self::Any | Self::None => true,

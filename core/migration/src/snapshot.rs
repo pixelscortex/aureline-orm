@@ -24,6 +24,7 @@ pub struct Snapshot {
     model: MigrationModel,
 }
 
+/// Error returned when snapshot JSON is malformed or fails schema validation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SnapshotError(String);
 
@@ -68,6 +69,10 @@ enum Entity {
 
 impl Snapshot {
     /// Creates a new history identity for a successfully generated model.
+    ///
+    /// A snapshot points only to its immediate predecessor. The CLI owns the
+    /// migration directory history; the library keeps this identity so the
+    /// next generation can prove which model it compared against.
     #[must_use]
     pub fn new(model: MigrationModel, previous: Option<&Self>) -> Self {
         let mut id = nanoid::nanoid!(16, &ID_ALPHABET);

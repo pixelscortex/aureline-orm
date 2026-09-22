@@ -1,3 +1,10 @@
+//! Exact offline migration contracts and target-enforcement rejection cases.
+//!
+//! The DDL assertions intentionally compare complete artifacts: ordering,
+//! canonical type spelling, and generated assertions are part of the migration
+//! contract. Error fixtures pin cases where a target cannot faithfully encode
+//! a checked type, so generation fails before an unsafe artifact is emitted.
+
 use aureline_test::aurl_test;
 
 #[test]

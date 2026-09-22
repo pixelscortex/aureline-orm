@@ -11,10 +11,16 @@
 	let artifact = $state<"script" | "snapshot" | "source">("script");
 	let notice = $state<{ source: string; error: boolean; messages: string[] } | null>(null);
 	let generating = $state(false);
+	// `latest` is the comparison base; `entry` is only the artifact currently being viewed.
+	// Keeping those roles separate lets users inspect an older migration without changing the next diff.
 	const latest = $derived(history.at(-1));
 	const entry = $derived(history[selected]);
 	const edited = $derived(latest !== undefined && latest.source !== source);
 
+	/**
+	 * Records a generated migration in this browser session. A no-op, validation error, or
+	 * exception leaves history untouched, so the next attempt still compares with the same snapshot.
+	 */
 	function generate() {
 		if (!ready || generating) return;
 		generating = true;
@@ -57,6 +63,7 @@
 
 	<p class="text-[11px] leading-relaxed text-muted-foreground">Browser session only · refresh clears history · nothing runs on a database.</p>
 
+	<!-- A notice belongs to the source that produced it; hide stale feedback after a new edit. -->
 	{#if notice && notice.source === source}
 		<div role="status" class={`rounded-lg border p-3 text-xs leading-relaxed ${notice.error ? "border-destructive/20 bg-destructive/5 text-destructive" : "border-border bg-muted/30 text-foreground"}`}>
 			{#each notice.messages as message}<p class="break-words">{message}</p>{/each}
@@ -75,6 +82,7 @@
 				<h3 class="text-xs font-bold">History <span class="ml-1 font-normal text-muted-foreground">{history.length}</span></h3>
 				<button type="button" onclick={reset} class="rounded px-2 py-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Reset history</button>
 			</div>
+			<!-- History entries are immutable session records; selecting one changes only the displayed artifact. -->
 			<div class="flex gap-2 overflow-x-auto pb-2" aria-label="Migration history">
 				{#each history as migration, index}
 					<button type="button" aria-pressed={selected === index} onclick={() => (selected = index)} class={`shrink-0 rounded-lg border px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected === index ? "border-foreground bg-muted" : "border-border hover:bg-muted/40"}`}>
@@ -91,6 +99,7 @@
 		<div class="min-w-0">
 			<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 				<p class="text-xs font-bold">Migration {String(selected + 1).padStart(2, "0")}</p>
+				<!-- These views expose the exact script, snapshot, and source captured by this history entry. -->
 				<div class="flex gap-1" aria-label="Migration artifacts">
 					{#each [{ id: "script" as const, label: "Script" }, { id: "snapshot" as const, label: "Snapshot" }, { id: "source" as const, label: "Saved schema" }] as view}
 						<button type="button" aria-pressed={artifact === view.id} onclick={() => (artifact = view.id)} class={`rounded px-2 py-1 text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${artifact === view.id ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted"}`}>{view.label}</button>

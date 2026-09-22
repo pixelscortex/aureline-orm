@@ -8,7 +8,9 @@
 use crate::model::MigrationType;
 
 pub(crate) struct FieldContract {
+    /// Native target type. Sized sets are intentionally rendered unsized.
     pub ty: String,
+    /// Optional recursive assertion that preserves Aureline-only constraints.
     pub assertion: Option<String>,
 }
 
@@ -42,6 +44,9 @@ impl std::fmt::Display for TargetError {
 impl std::error::Error for TargetError {}
 
 pub(crate) fn field_contract(ty: &MigrationType) -> Result<FieldContract, TargetError> {
+    // Native set length syntax means exact equality on the pinned target. Keep
+    // the native type unsized and express Aureline's maximum with ASSERT so
+    // values at or below the bound remain valid.
     Ok(FieldContract {
         ty: render_type(ty),
         assertion: assertion(ty, "$value", 0)?,
@@ -187,6 +192,10 @@ fn flatten_union<'a>(members: &'a [MigrationType], flattened: &mut Vec<&'a Migra
 }
 
 fn assertion(ty: &MigrationType, value: &str, depth: usize) -> Result<Option<String>, TargetError> {
+    // Assertions follow the same shape as the model: collection constraints
+    // recurse through `all`, tuple constraints use indexed values, and option
+    // constraints explicitly allow NONE. A constrained multi-branch union is
+    // rejected because a target-independent type guard is not established.
     match ty {
         MigrationType::Scalar(_) | MigrationType::Record(_) => Ok(None),
         MigrationType::Array { element, .. } => {

@@ -1,9 +1,21 @@
+//! Contract tests for the parser, checker, and migration seams.
+//!
+//! The harness deliberately exposes a small fluent API so integration tests can
+//! describe a source fixture once and assert the stage they care about. Parser
+//! assertions compare a normalized logical tree; compilation assertions run the
+//! same parser/checker/migration pipeline used by the product and then compare
+//! the generated DDL exactly.
+
 mod diff;
 mod matcher;
 mod normalizer;
 mod sexpr;
 
 /// Fluent entry point for an Aureline contract assertion.
+///
+/// A value owns its source fixture and consumes itself at the assertion that
+/// completes the contract. This keeps parser and migration expectations tied to
+/// one input while preventing a test from accidentally mixing stages.
 pub struct AurlTest {
     source: String,
 }
@@ -45,6 +57,10 @@ impl AurlTest {
     }
 
     /// Parses, checks, and generates a first migration from empty history.
+    ///
+    /// The returned [`Compiled`] value contains the generated artifact without
+    /// touching a database. Contract tests can therefore pin the offline
+    /// generator's output and its ordering independently of runtime execution.
     ///
     /// # Panics
     ///
