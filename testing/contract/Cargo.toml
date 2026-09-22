@@ -11,12 +11,13 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
+aureline-checker = { path = "../../core/checker" }
+aureline-migration = { path = "../../core/migration" }
 aureline-parser = { path = "../../core/parser", features = ["contract-serde"] }
 chumsky = "0.13.0"
 serde = "1"
 
 [dev-dependencies]
-aureline-checker = { path = "../../core/checker" }
 aureline-ast = { path = "../../core/ast" }
 
 [lints]

@@ -107,6 +107,10 @@ impl<'ast> ResolutionIndex<'ast> {
     }
 
     /// Resolves an exact, case-sensitive table name.
+    ///
+    /// `Missing` means no declaration matched, `Unique` identifies the only
+    /// matching table, and `Ambiguous` retains all matching IDs in source
+    /// order. Names are not normalized before matching.
     #[must_use]
     pub fn resolve_table(&self, name: &str) -> TableResolution {
         match self.tables_by_name.get(name) {
@@ -120,6 +124,10 @@ impl<'ast> ResolutionIndex<'ast> {
     }
 
     /// Resolves an exact, case-sensitive field name within one table.
+    ///
+    /// `Missing` covers an unknown table or field name. `Unique` identifies one
+    /// field, while `Ambiguous` retains every duplicate field candidate in the
+    /// owning table's source order.
     #[must_use]
     pub fn resolve_field(&self, table: TableId, name: &str) -> FieldResolution {
         match self
@@ -136,7 +144,10 @@ impl<'ast> ResolutionIndex<'ast> {
         }
     }
 
-    /// Returns table IDs in source declaration order.
+    /// Returns every indexed table ID in source declaration order.
+    ///
+    /// Duplicate declarations are retained because this index is lossless and
+    /// is also the source of duplicate-declaration Findings.
     #[must_use]
     pub fn tables(&self) -> &[TableId] {
         self.ast.root().tables()
@@ -155,12 +166,18 @@ impl<'ast> ResolutionIndex<'ast> {
     }
 
     /// Reads a table declaration by its compilation-local identity.
+    ///
+    /// Returns `None` when the ID is not present in the AST borrowed by this
+    /// index.
     #[must_use]
     pub fn table(&self, table: TableId) -> Option<&'ast aureline_ast::ast::TableDecl> {
         self.ast.table(table)
     }
 
     /// Reads a field declaration by its compilation-local identity.
+    ///
+    /// Returns `None` when the ID is not present in the AST borrowed by this
+    /// index.
     #[must_use]
     pub fn field(&self, field: FieldId) -> Option<&'ast aureline_ast::ast::FieldDecl> {
         self.ast.field(field)

@@ -1,3 +1,5 @@
+/** Target-neutral placeholder bindings model until issue #52 owns generation. */
+
 export type Scalar = "string" | "integer" | "boolean";
 
 export interface Field {

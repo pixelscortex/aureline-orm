@@ -7,6 +7,7 @@ tags:
   - lang
 
 dependsOn:
+  - aureline-migration
   - aureline-checker
   - aureline-parser
 
@@ -14,6 +15,7 @@ tasks:
   build:
     command: "cargo build -p aureline-wasm"
     deps:
+      - "aureline-migration:build"
       - "aureline-checker:build"
       - "aureline-parser:build"
     inputs:
@@ -24,6 +26,7 @@ tasks:
   check:
     command: "cargo check -p aureline-wasm"
     deps:
+      - "aureline-migration:check"
       - "aureline-checker:check"
       - "aureline-parser:check"
     inputs:
@@ -34,6 +37,7 @@ tasks:
   test:
     command: "cargo test -p aureline-wasm"
     deps:
+      - "aureline-migration:test"
       - "aureline-checker:test"
       - "aureline-parser:test"
     inputs:
@@ -44,6 +48,7 @@ tasks:
   build-wasm:
     command: "cargo build -p aureline-wasm --target wasm32-unknown-unknown"
     deps:
+      - "aureline-migration:build"
       - "aureline-checker:build"
       - "aureline-parser:build"
     inputs:

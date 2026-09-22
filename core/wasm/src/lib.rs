@@ -1,4 +1,4 @@
-//! Browser adapters for inspecting lexer output and parsed table declarations.
+//! Browser adapters for language inspection and offline migration previews.
 //!
 //! The table view follows the parser's arena ownership edges and borrows type
 //! spelling from the exact input using canonical UTF-8 byte spans. It is an
@@ -6,6 +6,10 @@
 //! Parser failures carry the original phase-local problems as data. Semantic
 //! Findings are mapped here to a browser DTO with contextual spans and brief
 //! messages; stable diagnostic codes remain a later rendering concern.
+
+mod migration;
+
+pub use migration::generate_migration;
 
 use aureline_ast::{ast::SchemaType, source::SourceSpan};
 use aureline_checker::{ArgumentRole, Finding};

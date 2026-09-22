@@ -1,3 +1,9 @@
+//! Checker contracts for tuple arity, order, and nested member structure.
+//!
+//! Tuples remain distinct from exact-length arrays even when their member count
+//! matches. The expectations also pin canonical formatting and independent
+//! invalid-member findings.
+
 use aureline_ast::ast::Ast;
 use aureline_checker::{Finding, SemanticType, TypeResolution, check};
 

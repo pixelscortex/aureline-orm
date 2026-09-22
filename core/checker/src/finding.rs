@@ -1,3 +1,10 @@
+//! Typed, source-located semantic findings.
+//!
+//! Findings describe checker obligations before consumer-neutral diagnostic
+//! codes or prose are assigned. Keeping the variants structured lets the
+//! browser, terminal, and future CLI render the same problem without making
+//! the checker depend on presentation policy.
+
 use aureline_ast::{ids::TableId, source::SourceSpan};
 
 /// A typed semantic problem before diagnostic wording and presentation.

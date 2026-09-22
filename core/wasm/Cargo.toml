@@ -3,7 +3,7 @@ name = "aureline-wasm"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Browser WebAssembly wrapper for Aureline syntax and semantic inspection."
+description = "Browser WebAssembly wrapper for Aureline inspection and offline migration previews."
 license.workspace = true
 
 [lib]
@@ -13,11 +13,15 @@ path = "src/lib.rs"
 [dependencies]
 aureline-ast = { path = "../ast" }
 aureline-checker = { path = "../checker" }
+aureline-migration = { path = "../migration" }
 aureline-parser = { path = "../parser" }
 console_error_panic_hook = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 wasm-bindgen = "0.2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 
 [lints]
 workspace = true

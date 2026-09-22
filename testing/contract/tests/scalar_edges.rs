@@ -1,3 +1,9 @@
+//! Scalar-resolution contracts for diagnostics, ordering, and exact spans.
+//!
+//! These cases cover supported spellings, unsupported keywords, bare table
+//! references, duplicate declarations, and invalid checked outcomes without
+//! allowing one bad field to hide another.
+
 use aureline_ast::{ast::Ast, ids::FieldId, source::SourceId};
 use aureline_checker::{Finding, SemanticType, TypeResolution, check};
 

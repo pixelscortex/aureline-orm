@@ -1,3 +1,9 @@
+//! Checker contracts for record targets and identity-preserving links.
+//!
+//! Record types resolve to concrete table sets, all tables, or invalid/unknown
+//! outcomes. The cases below pin forward and self links, nested constraints,
+//! schema modes, and the source spans attached to target failures.
+
 use aureline_ast::{
     ast::{Ast, SourceType, TypeArgument},
     source::{SourceId, SourceSpan},

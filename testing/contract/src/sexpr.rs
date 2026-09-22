@@ -1,14 +1,22 @@
+//! Minimal S-expression syntax used by parser contract expectations.
+//!
+//! The format is intentionally small: atoms can be bare when unambiguous or
+//! quoted with escapes, and lists preserve nesting. Compact rendering is used
+//! in failure messages while pretty rendering supplies stable diff boundaries.
+
 use std::fmt::Write as _;
 
 use chumsky::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Logical contract tree independent of source formatting.
 pub(crate) enum SExpr {
     Atom(String),
     List(Vec<Self>),
 }
 
 impl SExpr {
+    /// Parses one complete S-expression, collecting all parser diagnostics.
     pub(crate) fn parse(source: &str) -> Result<Self, String> {
         parser().parse(source).into_result().map_err(|errors| {
             errors
@@ -19,6 +27,7 @@ impl SExpr {
         })
     }
 
+    /// Renders the tree as one inline expression for copyable diagnostics.
     pub(crate) fn compact(&self) -> String {
         match self {
             Self::Atom(atom) => render_atom(atom),
@@ -33,6 +42,7 @@ impl SExpr {
         }
     }
 
+    /// Renders the tree into indentation-aware lines for structural diffs.
     pub(crate) fn pretty_lines(&self) -> Vec<String> {
         let mut lines = Vec::new();
         self.write_pretty_lines(0, &mut lines);
@@ -66,6 +76,8 @@ impl SExpr {
 }
 
 fn parser<'source>() -> impl Parser<'source, &'source str, SExpr, extra::Err<Rich<'source, char>>> {
+    // Keep the grammar symmetric with `render_atom`: every escaped atom that
+    // can be emitted by a failure message must be accepted by expectations.
     let bare_atom = any()
         .filter(|character: &char| is_bare_atom_character(*character))
         .repeated()

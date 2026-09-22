@@ -1,3 +1,9 @@
+//! Checker contracts for collection shape, nesting, and size diagnostics.
+//!
+//! These fixtures pin the distinction between arrays and sets, preserve
+//! recursive element structure, and verify that malformed constructor
+//! arguments remain independently reported with their source spans.
+
 use aureline_ast::{ast::Ast, source::SourceId};
 use aureline_checker::{ArgumentRole, Finding, SemanticType, TypeResolution, check};
 

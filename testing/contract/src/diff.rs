@@ -1,5 +1,22 @@
+//! Human-readable diagnostics for exact contract failures.
+//!
+//! Contract failures need to be copyable into a review. The two helpers
+//! label the artifact being compared, then reuse the same deterministic line
+//! diff so a changed semantic node or generated statement is easy to locate.
+
 use crate::sexpr::SExpr;
 
+/// Formats a mismatch between the expected and generated text artifacts.
+pub(crate) fn artifact_mismatch(expected: &str, actual: &str) -> String {
+    let expected_lines: Vec<_> = expected.split('\n').map(str::to_owned).collect();
+    let actual_lines: Vec<_> = actual.split('\n').map(str::to_owned).collect();
+    format!(
+        "generated artifact mismatch\n\nexpected:\n{expected}\n\nactual:\n{actual}\n\ndiff:\n{}",
+        line_diff(&expected_lines, &actual_lines)
+    )
+}
+
+/// Formats a mismatch between logical S-expression trees.
 pub(crate) fn mismatch(expected: &SExpr, actual: &SExpr) -> String {
     let expected_lines = expected.pretty_lines();
     let actual_lines = actual.pretty_lines();
@@ -13,6 +30,9 @@ pub(crate) fn mismatch(expected: &SExpr, actual: &SExpr) -> String {
 }
 
 fn line_diff(expected: &[String], actual: &[String]) -> String {
+    // The table stores the longest shared suffix for every pair of positions.
+    // Walking it from the front gives a compact diff while the `>=` tie-break
+    // keeps diagnostics stable when multiple shortest edits are possible.
     let mut shared_suffix_lengths = vec![vec![0; actual.len() + 1]; expected.len() + 1];
 
     for expected_index in (0..expected.len()).rev() {
